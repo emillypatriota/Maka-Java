@@ -28,7 +28,7 @@ public class GlobalExceptionHandler {
     public record ErroResponse(
             int status,
             String erro,
-            String mensagem,
+            String message,
             Map<String, String> campos,
             LocalDateTime timestamp) {
     }
@@ -83,9 +83,9 @@ public class GlobalExceptionHandler {
         return montar(HttpStatus.INTERNAL_SERVER_ERROR, "Erro interno do servidor", null);
     }
 
-    private ResponseEntity<ErroResponse> montar(HttpStatus status, String mensagem, Map<String, String> campos) {
+    private ResponseEntity<ErroResponse> montar(HttpStatus status, String message, Map<String, String> campos) {
         ErroResponse corpo = new ErroResponse(
-                status.value(), status.getReasonPhrase(), mensagem, campos, LocalDateTime.now());
+                status.value(), status.getReasonPhrase(), message, campos, LocalDateTime.now());
         return ResponseEntity.status(status).body(corpo);
     }
 

@@ -34,9 +34,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/produtos/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/cardapio/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/pedidos").permitAll()
-                        .anyRequest().authenticated());
+                        // TODO (Auth): trocar por .authenticated() quando o JWT estiver pronto
+                        .anyRequest().permitAll());
         return http.build();
     }
 
