@@ -1,28 +1,8 @@
-import { Component, OnInit, OnDestroy, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed } from '@angular/core';
 import { NgFor, NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import {
-  collection, addDoc, updateDoc, deleteDoc, doc,
-  onSnapshot, query, orderBy, serverTimestamp
-} from 'firebase/firestore';
-import { firestore } from '../../../core/firebase/firebase.config';
 import { ToastService } from '../../../services/toast.service';
-
-type StaffRole = 'manager' | 'kitchen' | 'delivery' | 'cashier' | 'waiter';
-type StaffStatus = 'active' | 'inactive' | 'on_leave';
-
-interface StaffMember {
-  id: string;
-  name: string;
-  role: StaffRole;
-  phone: string;
-  email: string;
-  status: StaffStatus;
-  schedule: string;
-  hireDate: string;
-  notes?: string;
-  createdAt?: any;
-}
+import { StaffService, StaffMember, StaffRole, StaffStatus } from '../../../services/staff.service';
 
 const ROLE_CONFIG: Record<StaffRole, { label: string; color: string; bg: string; icon: string }> = {
   manager:  { label: 'Gerente',    color: '#f59e0b', bg: 'rgba(245,158,11,.12)', icon: '👑' },
@@ -37,15 +17,6 @@ const STATUS_CONFIG: Record<StaffStatus, { label: string; color: string; bg: str
   inactive: { label: 'Inativo',  color: '#71717a', bg: 'rgba(113,113,122,.12)' },
   on_leave: { label: 'Licença',  color: '#f59e0b', bg: 'rgba(245,158,11,.12)' },
 };
-
-const SEED_STAFF: Omit<StaffMember, 'id'>[] = [
-  { name: 'Roberto Silva',   role: 'manager',  phone: '(11) 98765-4321', email: 'gerente@maka.com',    status: 'active',   schedule: 'Seg–Sex 09h–18h', hireDate: '2022-03-01' },
-  { name: 'Ana Souza',       role: 'kitchen',  phone: '(11) 97654-3210', email: 'ana.souza@maka.com',  status: 'active',   schedule: 'Ter–Dom 12h–21h', hireDate: '2022-06-15' },
-  { name: 'Carlos Mendes',   role: 'delivery', phone: '(11) 96543-2109', email: 'entregador@maka.com', status: 'active',   schedule: 'Seg–Sáb 18h–23h', hireDate: '2023-01-10' },
-  { name: 'Fernanda Lima',   role: 'cashier',  phone: '(11) 95432-1098', email: 'f.lima@maka.com',     status: 'active',   schedule: 'Seg–Sex 11h–20h', hireDate: '2023-04-20' },
-  { name: 'Paulo Ferreira',  role: 'waiter',   phone: '(11) 94321-0987', email: 'p.ferreira@maka.com', status: 'active',   schedule: 'Qua–Dom 18h–23h', hireDate: '2023-07-05' },
-  { name: 'Mariana Costa',   role: 'kitchen',  phone: '(11) 93210-9876', email: 'm.costa@maka.com',    status: 'on_leave', schedule: 'Seg–Sex 08h–17h', hireDate: '2022-09-12' },
-];
 
 @Component({
   selector: 'app-staff-management',
@@ -259,14 +230,13 @@ const SEED_STAFF: Omit<StaffMember, 'id'>[] = [
     .staff-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,.12); transform: translateY(-2px); }
   `]
 })
-export class StaffManagementComponent implements OnInit, OnDestroy {
-  staff = signal<StaffMember[]>([]);
+export class StaffManagementComponent implements OnInit {
+  get staff() { return this.staffService.staff$; }
   search = signal('');
   activeRole = signal<StaffRole | 'all'>('all');
   modalOpen = signal(false);
   saving = false;
   editingId: string | null = null;
-  private unsubStaff?: () => void;
 
   form: Omit<StaffMember, 'id'> = this.emptyForm();
 
@@ -300,24 +270,10 @@ export class StaffManagementComponent implements OnInit, OnDestroy {
     }));
   }
 
-  constructor(private toast: ToastService) {}
+  constructor(private toast: ToastService, private staffService: StaffService) {}
 
   ngOnInit() {
-    const q = query(collection(firestore, 'staff'), orderBy('name'));
-    this.unsubStaff = onSnapshot(q, async snapshot => {
-      if (snapshot.empty) { await this.seed(); return; }
-      this.staff.set(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as StaffMember)));
-    }, err => console.error('[StaffManagement] Firestore error:', err));
-  }
-
-  ngOnDestroy() {
-    this.unsubStaff?.();
-  }
-
-  private async seed() {
-    for (const member of SEED_STAFF) {
-      await addDoc(collection(firestore, 'staff'), { ...member, createdAt: serverTimestamp() });
-    }
+    this.staffService.load();
   }
 
   roleCfg(role: StaffRole)     { return ROLE_CONFIG[role]   ?? ROLE_CONFIG.waiter; }
@@ -338,27 +294,31 @@ export class StaffManagementComponent implements OnInit, OnDestroy {
     this.saving = true;
     try {
       if (this.editingId) {
-        await updateDoc(doc(firestore, 'staff', this.editingId), { ...this.form });
+        await this.staffService.updateMember(this.editingId, { ...this.form });
         this.toast.show('Funcionário atualizado!');
       } else {
-        await addDoc(collection(firestore, 'staff'), { ...this.form, createdAt: serverTimestamp() });
+        await this.staffService.addMember({ ...this.form });
         this.toast.show('Funcionário adicionado!');
       }
       this.closeModal();
-    } catch { this.toast.show('Erro ao salvar. Tente novamente.', 'error'); }
+    } catch (e) { this.toast.show(e instanceof Error ? e.message : 'Erro ao salvar. Tente novamente.', 'error'); }
     finally { this.saving = false; }
   }
 
   async toggleStatus(member: StaffMember) {
     const next: StaffStatus = member.status === 'active' ? 'inactive' : 'active';
-    await updateDoc(doc(firestore, 'staff', member.id), { status: next });
-    this.toast.show(next === 'active' ? `${member.name} ativado` : `${member.name} desativado`);
+    try {
+      await this.staffService.setStatus(member.id, next);
+      this.toast.show(next === 'active' ? `${member.name} ativado` : `${member.name} desativado`);
+    } catch (e) { this.toast.show(e instanceof Error ? e.message : 'Erro ao atualizar status.', 'error'); }
   }
 
   async remove(id: string) {
     if (!confirm('Remover este funcionário?')) return;
-    await deleteDoc(doc(firestore, 'staff', id));
-    this.toast.show('Funcionário removido');
+    try {
+      await this.staffService.removeMember(id);
+      this.toast.show('Funcionário removido');
+    } catch (e) { this.toast.show(e instanceof Error ? e.message : 'Erro ao remover.', 'error'); }
   }
 
   private emptyForm(): Omit<StaffMember, 'id'> {
