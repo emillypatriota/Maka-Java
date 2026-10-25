@@ -1,0 +1,12 @@
+{
+  "name": "maka-delivery-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "npm --prefix Maka-Java-develop/frontend start",
+    "build": "npm --prefix Maka-Java-develop/frontend run build",
+    "watch": "npm --prefix Maka-Java-develop/frontend run watch",
+    "install:frontend": "npm --prefix Maka-Java-develop/frontend install"
+  }
+}
+
