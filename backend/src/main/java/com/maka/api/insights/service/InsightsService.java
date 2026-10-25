@@ -2,7 +2,9 @@ package com.maka.api.insights.service;
 
 import com.maka.api.insights.dto.InsightsResumoResponseDTO;
 import com.maka.api.model.Pedido;
+import com.maka.api.repository.ItemPedidoRepository;
 import com.maka.api.repository.PedidoRepository;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -16,10 +18,12 @@ import java.util.stream.Collectors;
 public class InsightsService {
 
     private final PedidoRepository pedidoRepository;
+    private final ItemPedidoRepository itemPedidoRepository;
 
     // Injeção de dependência via construtor (evitando armadilhas do Lombok)
-    public InsightsService(PedidoRepository pedidoRepository) {
+    public InsightsService(PedidoRepository pedidoRepository, ItemPedidoRepository itemPedidoRepository) {
         this.pedidoRepository = pedidoRepository;
+        this.itemPedidoRepository = itemPedidoRepository;
     }
 
     public InsightsResumoResponseDTO obterResumo() {
@@ -67,7 +71,17 @@ public class InsightsService {
         resumo.setTicketMedio(ticketMedio);
         resumo.setTotalPedidos(totalPedidos);
         resumo.setFaturamentoPorDia(faturamentoPorDia);
-        resumo.setPratosMaisVendidos(List.of()); // Pode ser populado integrando com o repositório de itens se necessário
+        List<InsightsResumoResponseDTO.PratoMaisVendidoDTO> pratosMaisVendidos =
+                itemPedidoRepository.findPratosMaisVendidos(PageRequest.of(0, 5)).stream()
+                        .map(item -> {
+                            InsightsResumoResponseDTO.PratoMaisVendidoDTO dto =
+                                    new InsightsResumoResponseDTO.PratoMaisVendidoDTO();
+                            dto.setNomeProduto(item.getNomeProduto());
+                            dto.setQuantidadeTotal(item.getQuantidadeTotal());
+                            return dto;
+                        })
+                        .collect(Collectors.toList());
+        resumo.setPratosMaisVendidos(pratosMaisVendidos);
 
         return resumo;
     }
