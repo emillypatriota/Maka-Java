@@ -1,7 +1,9 @@
 import { Injectable, signal } from '@angular/core';
-import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
-import { firebaseAuth } from '../core/firebase/firebase.config';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
+import { environment } from '../../environments/environment';
 import { UserRole } from '../models';
+import { clearToken, readToken, saveToken } from '../core/auth.interceptor';
 
 export interface AuthUser {
   uid: string;
@@ -10,67 +12,56 @@ export interface AuthUser {
   username: string;
 }
 
-const ROLE_MAP: Record<string, { role: UserRole; username: string }> = {
-  'gerente@maka.com':    { role: 'manager',  username: 'Roberto Silva' },
-  'cozinha@maka.com':    { role: 'kitchen',  username: 'Equipe Cozinha' },
-  'entregador@maka.com': { role: 'delivery', username: 'Carlos Mendes' },
-};
+interface LoginResponse {
+  token: string;
+  user: AuthUser;
+}
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private _user = signal<AuthUser | null>(null);
   readonly user = this._user.asReadonly();
 
-  // Resolve com o usuário (ou null) após o primeiro onAuthStateChanged.
-  // Passar o valor na Promise elimina qualquer race condition de sinal.
-  private _resolved = false;
+  // Promise que resolve UMA vez só: com o usuário (se há token válido) ou null.
+  // Sem token salvo resolve null na hora, sem chamar a API.
   private _readyResolve!: (u: AuthUser | null) => void;
   readonly ready = new Promise<AuthUser | null>(res => { this._readyResolve = res; });
 
-  constructor() {
-    onAuthStateChanged(firebaseAuth, fbUser => {
-      const email = fbUser?.email?.trim().toLowerCase() ?? '';
-      const mapped = email ? ROLE_MAP[email] : null;
-      const authUser: AuthUser | null = (mapped && fbUser)
-        ? { uid: fbUser.uid, email: fbUser.email!, role: mapped.role, username: mapped.username }
-        : null;
-
-      this._user.set(authUser);
-
-      if (!this._resolved) {
-        this._resolved = true;
-        this._readyResolve(authUser);
-      }
-    });
+  constructor(private http: HttpClient) {
+    this.restoreSession();
   }
 
   get isAuthenticated(): boolean { return this._user() !== null; }
   get role(): UserRole           { return this._user()?.role ?? null; }
   getUser()                      { return this._user(); }
 
-  async loginWithEmail(email: string, password: string): Promise<AuthUser> {
-    const cred = await signInWithEmailAndPassword(firebaseAuth, email, password);
-    const normalizedEmail = cred.user.email?.trim().toLowerCase() ?? '';
-    const mapped = ROLE_MAP[normalizedEmail];
-    if (!mapped) throw new Error('Conta não autorizada neste sistema.');
-
-    const authUser: AuthUser = {
-      uid:      cred.user.uid,
-      email:    cred.user.email!,
-      role:     mapped.role,
-      username: mapped.username,
-    };
-    this._user.set(authUser);
-
-    if (!this._resolved) {
-      this._resolved = true;
-      this._readyResolve(authUser);
+  private async restoreSession(): Promise<void> {
+    if (!readToken()) {
+      this._readyResolve(null);
+      return;
     }
-    return authUser;
+    try {
+      const user = await firstValueFrom(this.http.get<AuthUser>(`${environment.apiUrl}/auth/me`));
+      this._user.set(user);
+      this._readyResolve(user);
+    } catch (err: any) {
+      // Token vencido/inválido: limpa. Se for só o backend fora do ar, mantém o token.
+      if (err?.status === 401 || err?.status === 403) clearToken();
+      this._readyResolve(null);
+    }
+  }
+
+  async loginWithEmail(email: string, password: string): Promise<AuthUser> {
+    const res = await firstValueFrom(
+      this.http.post<LoginResponse>(`${environment.apiUrl}/auth/login`, { email, password })
+    );
+    saveToken(res.token);
+    this._user.set(res.user);
+    return res.user;
   }
 
   async logout(): Promise<void> {
-    await signOut(firebaseAuth);
+    clearToken();
     this._user.set(null);
   }
 }
