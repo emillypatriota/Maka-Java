@@ -22,23 +22,22 @@ public class AuthService {
     private JwtService jwtService;
 
     public LoginResponse authenticate(LoginRequest request) {
-        // Busca o usuário correto no banco pelo e-mail
+        // Busca obrigatória no banco real mapeado pelo grupo
         Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new BadCredentialsException("Usuário ou senha inválidos"));
 
-        // Compara a senha digitada com a criptografada do banco
-        if (!passwordEncoder.matches(request.getPassword(), usuario.getSenha())) {
+        // Validação estrita da senha criptografada via BCrypt usando o campo senhaHash
+        if (!passwordEncoder.matches(request.getPassword(), usuario.getSenhaHash())) {
             throw new BadCredentialsException("Usuário ou senha inválidos");
         }
 
-        // Pega o perfil (MANAGER, KITCHEN, DELIVERY) e formata para o Front e para o Spring
+        // Conversão de Roles para manter compatibilidade com o Spring Security e o Front
         String frontRole = usuario.getPerfil().name().toLowerCase();
         String springRole = "ROLE_" + usuario.getPerfil().name();
 
-        // Gera o token com o cargo correto
         String token = jwtService.generateToken(usuario.getEmail(), springRole);
 
-        // Monta o objeto 'user' exatamente como a Dupla Front/Gestão exigiu
+        // Montagem do DTO composto exatamente sob demanda do Front-end
         LoginResponse.UserDto userDto = new LoginResponse.UserDto(
                 String.valueOf(usuario.getId()),
                 usuario.getEmail(),
@@ -47,5 +46,17 @@ public class AuthService {
         );
 
         return new LoginResponse(token, userDto);
+    }
+
+    // Usado pelo GET /api/auth/me: devolve o usuario do token no mesmo formato do login
+    public LoginResponse.UserDto buscarPorEmail(String email) {
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new BadCredentialsException("Usuário não encontrado"));
+        return new LoginResponse.UserDto(
+                String.valueOf(usuario.getId()),
+                usuario.getEmail(),
+                usuario.getPerfil().name().toLowerCase(),
+                usuario.getNome()
+        );
     }
 }

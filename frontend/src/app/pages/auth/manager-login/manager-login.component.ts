@@ -6,10 +6,10 @@ import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
 import { UserRole } from '../../../models';
 
-// Pre-registered Firebase accounts:
-// gerente@maka.com    / maka2024
-// cozinha@maka.com    / maka2024
-// entregador@maka.com / maka2024
+// Contas de teste (seed do banco, senha 123456):
+// gerente@maka.com
+// cozinha@maka.com
+// entregador@maka.com
 
 function makeLoginComponent(
   role: UserRole,
@@ -152,7 +152,7 @@ function makeLoginComponent(
                 </div>
                 <div style="background:var(--bg-elevated);border-radius:var(--r-md);padding:.5rem .75rem">
                   <p style="font-size:.62rem;color:var(--text-tertiary);margin-bottom:2px;letter-spacing:.05em">SENHA</p>
-                  <strong style="font-family:var(--font-mono);color:var(--text-primary)">maka2024</strong>
+                  <strong style="font-family:var(--font-mono);color:var(--text-primary)">123456</strong>
                 </div>
               </div>
               <button (click)="fillDemo()"
@@ -222,7 +222,7 @@ function makeLoginComponent(
 
     fillDemo() {
       this.email    = this.emailPlaceholder;
-      this.password = 'maka2024';
+      this.password = '123456';
     }
 
     async login() {
@@ -233,16 +233,23 @@ function makeLoginComponent(
       this.error = '';
       this.loading = true;
       try {
-        await this.auth.loginWithEmail(this.email, this.password);
+        const user = await this.auth.loginWithEmail(this.email, this.password);
+        if (user.role !== role) {
+          await this.auth.logout();
+          throw new Error('Esta conta não tem acesso a este portal.');
+        }
         this.toast.show('Acesso autorizado. Bem-vindo!');
-        // Usa navegação nativa: Firebase persiste a sessão, a página recarrega,
-        // APP_INITIALIZER aguarda auth.ready e o guard passa de forma garantida.
+        // Usa navegação nativa: o token fica no localStorage, a página recarrega,
+        // APP_INITIALIZER aguarda auth.ready (GET /auth/me) e o guard passa de forma garantida.
         setTimeout(() => { window.location.assign(redirect); }, 400);
       } catch (err: any) {
-        const msg = err?.message ?? '';
-        this.error = msg.includes('não autorizada')
-          ? msg
-          : 'E-mail ou senha incorretos. Verifique as credenciais.';
+        if (err?.status === 0) {
+          this.error = 'Servidor indisponível. Verifique se o backend está rodando.';
+        } else if (err?.status === 401) {
+          this.error = 'E-mail ou senha incorretos. Verifique as credenciais.';
+        } else {
+          this.error = err?.error?.message ?? err?.message ?? 'Não foi possível entrar.';
+        }
         this.loading = false;
       }
     }

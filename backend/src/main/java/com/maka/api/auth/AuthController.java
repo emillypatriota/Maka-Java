@@ -2,7 +2,6 @@ package com.maka.api.auth;
 
 import com.maka.api.auth.dto.LoginRequest;
 import com.maka.api.auth.dto.LoginResponse;
-import com.maka.api.auth.dto.UserResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -21,11 +20,8 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<UserResponse> me() {
+    public ResponseEntity<LoginResponse.UserDto> me() {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
-        String email = authentication.getName();
-        String role = authentication.getAuthorities().iterator().next().getAuthority();
-
-        return ResponseEntity.ok(new UserResponse(email, role));
+        return ResponseEntity.ok(authService.buscarPorEmail(authentication.getName()));
     }
 }
