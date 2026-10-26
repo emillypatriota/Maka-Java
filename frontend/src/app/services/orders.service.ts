@@ -4,7 +4,7 @@ import { Observable, timer } from 'rxjs';
 import { switchMap, map, tap, shareReplay } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { Order, OrderStatus } from '../models';
-
+//Ajuste para abertura de PR
 @Injectable({
   providedIn: 'root'
 })
