@@ -1,92 +1,47 @@
-import { Injectable, NgZone, signal } from '@angular/core';
-import { Observable, shareReplay } from 'rxjs';
-import {
-  collection, addDoc, updateDoc, doc,
-  onSnapshot, query, orderBy, serverTimestamp, Timestamp
-} from 'firebase/firestore';
-import { firestore } from '../core/firebase/firebase.config';
-import { Order, OrderStatus, CartItem } from '../models';
+import { Injectable, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable, timer } from 'rxjs';
+import { switchMap, map, tap, shareReplay } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
+import { Order, OrderStatus } from '../models';
 
-@Injectable({ providedIn: 'root' })
+@Injectable({
+  providedIn: 'root'
+})
 export class OrdersService {
   private _orders = signal<Order[]>([]);
-
-  // Signal — para componentes modernos
   readonly orders$ = this._orders.asReadonly();
 
-  constructor(private ngZone: NgZone) {}
+  // Polling a cada 5 segundos para atualizar os pedidos via HTTP GET
+  readonly orders: Observable<Order[]> = timer(0, 5000).pipe(
+    switchMap(() => this.http.get<Order[]>(`${environment.apiUrl}/pedidos`)),
+    map(list => list.map(o => ({ ...o, createdAt: new Date(o.createdAt) }))),
+    tap(list => this._orders.set(list)),
+    shareReplay({ bufferSize: 1, refCount: true })
+  );
 
-  // Observable compartilhado (hot) — um único listener Firestore para todos os subscribers.
-  // O listener roda fora da zona do Angular para evitar que reconexões do Firestore
-  // disparem change detection desnecessariamente; os dados voltam para a zona via ngZone.run().
-  readonly orders: Observable<Order[]> = new Observable<Order[]>(subscriber => {
-    const q = query(
-      collection(firestore, 'orders'),
-      orderBy('createdAt', 'desc')
-    );
-
-    const unsubscribe = this.ngZone.runOutsideAngular(() =>
-      onSnapshot(q, (snapshot) => {
-        const orders = snapshot.docs.map(d => {
-          const data = d.data();
-          return {
-            ...data,
-            id: d.id,
-            createdAt: data['createdAt'] instanceof Timestamp
-              ? data['createdAt'].toDate()
-              : new Date(data['createdAt'] ?? Date.now()),
-          } as Order;
-        });
-        this.ngZone.run(() => {
-          this._orders.set(orders);
-          subscriber.next(orders);
-        });
-      }, err => this.ngZone.run(() => subscriber.error(err)))
-    );
-
-    return () => unsubscribe();
-  }).pipe(shareReplay({ bufferSize: 1, refCount: true }));
-
-  getOrders(): Order[] { return this._orders(); }
-  getMyOrders(uid?: string): Order[] {
-    return this._orders().filter(o => o.isLocal || o.customerUid === uid);
+  constructor(private http: HttpClient) {
+    // Subscreve para manter o fluxo de polling ativo na aplicação
+    this.orders.subscribe();
   }
 
-  async addOrder(data: {
-    items: CartItem[];
-    customer: Order['customer'];
-    paymentMethod: string;
-    total: number;
-    deliveryFee: number;
-    observations?: string;
-    customerUid?: string;
-  }): Promise<Order> {
-    const orders = this._orders();
-    const orderNumber = (orders.length + 1).toString().padStart(4, '0');
+  getOrders(): Order[] {
+    return this._orders();
+  }
 
-    const newOrder = {
-      ...data,
-      orderNumber,
-      status: 'pending' as OrderStatus,
-      orderType: 'delivery' as const,
-      isLocal: true,
-      createdAt: serverTimestamp(),
-    };
-
-    const ref = await addDoc(collection(firestore, 'orders'), newOrder);
-
-    return {
-      ...newOrder,
-      id: ref.id,
-      createdAt: new Date(),
-    } as Order;
+  async addOrder(orderData: any): Promise<Order> {
+    const response = await this.http.post<Order>(`${environment.apiUrl}/pedidos`, orderData).toPromise();
+    if (!response) {
+      throw new Error('Erro ao criar pedido');
+    }
+    return response;
   }
 
   async updateStatus(orderId: string, status: OrderStatus): Promise<void> {
-    await updateDoc(doc(firestore, 'orders', orderId), { status });
+    await this.http.patch(`${environment.apiUrl}/pedidos/${orderId}/status`, { status }).toPromise();
   }
 
   async assignDelivery(orderId: string, deliveryPersonId: string): Promise<void> {
-    await updateDoc(doc(firestore, 'orders', orderId), { deliveryPersonId });
+    await this.http.patch(`${environment.apiUrl}/pedidos/${orderId}/entregador`, { deliveryPersonId }).toPromise();
   }
 }

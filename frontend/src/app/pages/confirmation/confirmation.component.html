@@ -1,0 +1,8 @@
+<div class="confirmation-container">
+  <h2>Pedido Realizado com Sucesso!</h2>
+  <p>Obrigado pela sua compra.</p>
+  <div *ngIf="orderId" class="order-id-box">
+    <p><strong>ID do Pedido:</strong> {{ orderId }}</p>
+  </div>
+  <a routerLink="/menu" class="btn-home">Voltar ao Menu</a>
+</div>
