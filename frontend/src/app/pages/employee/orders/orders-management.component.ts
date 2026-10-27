@@ -3,6 +3,7 @@ import { NgFor, NgIf, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { OrdersService } from '../../../services/orders.service';
+import { ToastService } from '../../../services/toast.service'; 
 import { Order, OrderStatus, STATUS_CONFIG } from '../../../models';
 
 const TABS: { label: string; value: OrderStatus | 'all' }[] = [
@@ -37,12 +38,11 @@ const NEXT_LABEL: Partial<Record<OrderStatus, string>> = {
   imports: [NgFor, NgIf, DatePipe, FormsModule],
   template: `
     <div style="padding:2rem 2rem 4rem">
-
       <!-- Header -->
       <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.75rem">
         <div>
           <h1 style="font-family:var(--font-serif);font-size:1.875rem;color:var(--text-primary)">Gestão de Pedidos</h1>
-          <p style="font-size:.82rem;color:var(--text-muted);margin-top:.25rem">Atualizações em tempo real via Firebase</p>
+          <p style="font-size:.82rem;color:var(--text-muted);margin-top:.25rem">Conectado ao Backend Spring Boot</p>
         </div>
         <div style="display:flex;align-items:center;gap:.5rem;background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-full);padding:.5rem 1rem;font-size:.78rem;color:var(--text-muted)">
           <span style="width:7px;height:7px;border-radius:50%;background:#22c55e;animation:pulse 2s infinite"></span>
@@ -140,8 +140,19 @@ const NEXT_LABEL: Partial<Record<OrderStatus, string>> = {
               <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;margin-top:1px"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
               <span>{{ order.customer.address }}</span>
             </div>
+            
+            <!-- Tempo estimado inserido conforme regra (Sprint 6)[cite: 17] -->
+            <div *ngIf="order.tempo_estimado" style="display:flex;gap:.5rem;align-items:center;font-size:.78rem;color:var(--text-muted);margin-bottom:.875rem">
+              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span>Tempo Estimado: {{ order.tempo_estimado }} min</span>
+            </div>
+
             <div *ngIf="order.observations" style="background:#fffbeb;border:1px solid #fde68a;border-radius:var(--r-md);padding:.5rem .75rem;font-size:.78rem;color:#92400e;margin-bottom:.875rem">
               📝 {{ order.observations }}
+            </div>
+            
+            <div *ngIf="order.motivo_cancelamento" style="background:var(--danger-bg);border:1px solid var(--danger-border);border-radius:var(--r-md);padding:.5rem .75rem;font-size:.78rem;color:var(--danger-text);margin-bottom:.875rem">
+              Motivo do cancelamento: {{ order.motivo_cancelamento }}
             </div>
 
             <!-- Actions -->
@@ -162,9 +173,6 @@ const NEXT_LABEL: Partial<Record<OrderStatus, string>> = {
                   Cancelar
                 </button>
               </div>
-              <span style="font-size:.7rem;color:var(--text-muted)">
-                {{ order.estimatedTime ? '⏱ ' + order.estimatedTime + ' min' : '' }}
-              </span>
             </div>
           </div>
         </div>
@@ -218,10 +226,14 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     return list;
   });
 
-  constructor(private ordersService: OrdersService) {}
+  constructor(
+    private ordersService: OrdersService,
+    private toastService: ToastService
+  ) {}
 
   ngOnInit() {
-    this.sub = this.ordersService.orders.subscribe({
+    
+    this.sub = this.ordersService.orders$.subscribe({
       next: orders => this.allOrders.set(orders),
       error: err => console.error('[OrdersManagement] orders error:', err),
     });
@@ -240,18 +252,50 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     return this.allOrders().filter(o => o.status === tab).length;
   }
 
-  async advance(order: Order) {
+  
+  advance(order: Order) {
     const next = this.nextStatus(order.status);
     if (!next || this.updating) return;
+    
     this.updating = order.id;
-    try { await this.ordersService.updateStatus(order.id, next); }
-    finally { this.updating = null; }
+    this.ordersService.updateStatus(order.id, next).subscribe({
+      next: () => {
+        this.toastService.show('Status atualizado com sucesso.', 'success');
+        this.updating = null;
+      },
+      error: (err) => {
+        if (err.status === 409) {
+          this.toastService.show(err.error.message, 'error');
+        } else {
+          this.toastService.show('Erro ao atualizar o pedido.', 'error');
+        }
+        this.updating = null;
+      }
+    });
   }
 
-  async cancel(order: Order) {
+  // Cancelamento com motivo, usando chamada HTTP do serviço[cite: 17]
+  cancel(order: Order) {
     if (this.updating) return;
+    
+    const motivo = window.prompt("Qual o motivo do cancelamento?");
+    if (!motivo) return; 
+    
     this.updating = order.id;
-    try { await this.ordersService.updateStatus(order.id, 'cancelled'); }
-    finally { this.updating = null; }
+    
+    this.ordersService.cancelOrder(order.id, motivo).subscribe({
+      next: () => {
+        this.toastService.show('Pedido cancelado.', 'success');
+        this.updating = null;
+      },
+      error: (err) => {
+        if (err.status === 409) {
+          this.toastService.show(err.error.message, 'error');
+        } else {
+          this.toastService.show('Erro ao cancelar o pedido.', 'error');
+        }
+        this.updating = null;
+      }
+    });
   }
 }

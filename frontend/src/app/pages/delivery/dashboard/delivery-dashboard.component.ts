@@ -239,7 +239,7 @@ export class DeliveryDashboardComponent implements OnInit, OnDestroy {
     return [
       { key: 'available', label: 'Disponíveis', icon: '📦', count: this.available.length },
       { key: 'active',    label: 'Em Rota',     icon: '🚴', count: this.active.length    },
-      { key: 'done',      label: 'Concluídas',  icon: '✅', count: 0                    },
+      { key: 'done',      label: 'Concluídas',  icon: '✅', count: 0                     },
     ];
   }
 
@@ -253,8 +253,11 @@ export class DeliveryDashboardComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.deliveryUid = this.auth.getUser()?.uid ?? 'entregador-1';
-    this.sub = this.ordersService.orders.subscribe({
+    
+    // Escuta o observable de polling criado no serviço[cite: 7]
+    this.sub = this.ordersService.orders$.subscribe({
       next: orders => {
+        // Filtro local mantido: status ready e sem entregador atribuído[cite: 12]
         this.available = orders.filter(o =>
           o.status === 'ready' && !o.deliveryPersonId && o.orderType === 'delivery'
         );
@@ -273,16 +276,39 @@ export class DeliveryDashboardComponent implements OnInit, OnDestroy {
 
   trackById(_: number, o: Order) { return o.id; }
 
-  async accept(order: Order) {
-    await this.ordersService.assignDelivery(order.id, this.deliveryUid);
-    await this.ordersService.updateStatus(order.id, 'delivering');
-    this.toast.show('Entrega aceita! Bora lá!');
-    this.activeTab = 'active';
+  
+  accept(order: Order) {
+    this.ordersService.assignDelivery(order.id).subscribe({
+      next: () => {
+        // Encadeia a mudança de status logo após a atribuição[cite: 5, 17]
+        this.ordersService.updateStatus(order.id, 'delivering').subscribe({
+          next: () => {
+            this.toast.show('Entrega aceita! Bora lá!', 'success');
+            this.activeTab = 'active';
+          },
+          error: err => this.handleError(err, 'Erro ao atualizar pedido para em rota.')
+        });
+      },
+      error: err => this.handleError(err, 'Erro ao assumir a entrega.')
+    });
   }
 
-  async complete(id: string) {
-    await this.ordersService.updateStatus(id, 'delivered');
-    this.toast.show('Entrega concluída! +R$ 7,50');
-    this.activeTab = 'done';
+ 
+  complete(id: string) {
+    this.ordersService.updateStatus(id, 'delivered').subscribe({
+      next: () => {
+        this.toast.show('Entrega concluída! +R$ 7,50', 'success');
+        this.activeTab = 'done';
+      },
+      error: err => this.handleError(err, 'Erro ao concluir entrega.')
+    });
+  }
+
+  private handleError(err: any, defaultMsg: string) {
+    if (err.status === 409) {
+      this.toast.show(err.error.message, 'error'); 
+    } else {
+      this.toast.show(defaultMsg, 'error');
+    }
   }
 }

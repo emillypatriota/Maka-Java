@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { NgFor, NgIf, DatePipe } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { OrdersService } from '../../../services/orders.service';
+import { ToastService } from '../../../services/toast.service';
 import { Order, OrderStatus } from '../../../models';
 
 @Component({
@@ -223,10 +224,14 @@ export class KitchenDashboardComponent implements OnInit, OnDestroy {
   ready:     Order[] = [];
   private sub?: Subscription;
 
-  constructor(private ordersService: OrdersService) {}
+  constructor(
+    private ordersService: OrdersService,
+    private toastService: ToastService 
+  ) {}
 
   ngOnInit() {
-    this.sub = this.ordersService.orders.subscribe({
+  
+    this.sub = this.ordersService.orders$.subscribe({
       next: orders => {
         this.allOrders = orders;
         this.pending   = orders.filter(o => o.status === 'pending');
@@ -241,7 +246,19 @@ export class KitchenDashboardComponent implements OnInit, OnDestroy {
 
   trackById(_: number, o: Order) { return o.id; }
 
-  async advance(id: string, next: OrderStatus) {
-    await this.ordersService.updateStatus(id, next);
+ 
+  advance(id: string, next: OrderStatus) {
+    this.ordersService.updateStatus(id, next).subscribe({
+      next: () => {
+        this.toastService.show('Status atualizado com sucesso!', 'success');
+      },
+      error: (err) => {
+        if (err.status === 409) {
+          this.toastService.show(err.error.message, 'error'); 
+        } else {
+          this.toastService.show('Erro ao atualizar o pedido.', 'error');
+        }
+      }
+    });
   }
 }
