@@ -38,7 +38,6 @@ const NEXT_LABEL: Partial<Record<OrderStatus, string>> = {
   imports: [NgFor, NgIf, DatePipe, FormsModule],
   template: `
     <div style="padding:2rem 2rem 4rem">
-      <!-- Header -->
       <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.75rem">
         <div>
           <h1 style="font-family:var(--font-serif);font-size:1.875rem;color:var(--text-primary)">Gestão de Pedidos</h1>
@@ -50,7 +49,6 @@ const NEXT_LABEL: Partial<Record<OrderStatus, string>> = {
         </div>
       </div>
 
-      <!-- KPIs -->
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.875rem;margin-bottom:1.75rem">
         <div *ngFor="let kpi of kpis()" style="background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-xl);padding:1rem 1.125rem">
           <p style="font-size:.68rem;font-weight:600;letter-spacing:.1em;color:var(--text-muted);margin-bottom:.375rem">{{ kpi.label }}</p>
@@ -58,7 +56,6 @@ const NEXT_LABEL: Partial<Record<OrderStatus, string>> = {
         </div>
       </div>
 
-      <!-- Search + Filters -->
       <div style="display:flex;gap:.875rem;flex-wrap:wrap;margin-bottom:1.25rem">
         <div style="position:relative;flex:1;min-width:200px">
           <svg style="position:absolute;left:.875rem;top:50%;transform:translateY(-50%);color:var(--text-muted)" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -68,7 +65,6 @@ const NEXT_LABEL: Partial<Record<OrderStatus, string>> = {
         </div>
       </div>
 
-      <!-- Status tabs -->
       <div style="display:flex;gap:.25rem;overflow-x:auto;margin-bottom:1.5rem;padding-bottom:.25rem;scrollbar-width:none">
         <button *ngFor="let tab of tabs"
           (click)="activeTab.set(tab.value)"
@@ -84,31 +80,19 @@ const NEXT_LABEL: Partial<Record<OrderStatus, string>> = {
         </button>
       </div>
 
-      <!-- Empty state -->
       <div *ngIf="filtered().length === 0" style="text-align:center;padding:4rem 2rem;background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-2xl)">
         <div style="font-size:3rem;margin-bottom:1rem">📋</div>
         <p style="color:var(--text-muted);font-size:.9rem">Nenhum pedido encontrado</p>
       </div>
 
-      <!-- Orders list -->
       <div style="display:flex;flex-direction:column;gap:1rem">
-        <div *ngFor="let order of filtered()" class="order-card"
-             style="background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-xl);overflow:hidden;transition:box-shadow .2s">
-
-          <!-- Top color bar -->
+        <div *ngFor="let order of filtered()" class="order-card" style="background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-xl);overflow:hidden;transition:box-shadow .2s">
           <div style="height:3px" [style.background]="cfg(order.status).color"></div>
-
           <div style="padding:1.25rem 1.375rem">
-            <!-- Header row -->
             <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:.75rem;margin-bottom:1rem">
               <div style="display:flex;align-items:center;gap:.875rem;flex-wrap:wrap">
                 <span style="font-family:monospace;font-size:.9rem;font-weight:700;color:var(--text-primary)">#{{ order.orderNumber }}</span>
-                <span class="status-pill"
-                  [style.background]="cfg(order.status).bg"
-                  [style.color]="cfg(order.status).color"
-                  [style.borderColor]="cfg(order.status).border">
-                  {{ cfg(order.status).label }}
-                </span>
+                <span class="status-pill" [style.background]="cfg(order.status).bg" [style.color]="cfg(order.status).color" [style.borderColor]="cfg(order.status).border">{{ cfg(order.status).label }}</span>
                 <span style="font-size:.75rem;color:var(--text-muted)">{{ order.createdAt | date:'dd/MM HH:mm' }}</span>
               </div>
               <div style="text-align:right">
@@ -117,16 +101,10 @@ const NEXT_LABEL: Partial<Record<OrderStatus, string>> = {
               </div>
             </div>
 
-            <!-- Customer info -->
             <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.875rem;font-size:.82rem;color:var(--text-secondary)">
-              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"/></svg>
-              <span>{{ order.customer.name }}</span>
-              <span style="color:var(--text-muted)">·</span>
-              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.8 19.79 19.79 0 01.22 2.18 2 2 0 012.18 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.09a16 16 0 006 6l.46-.46a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/></svg>
-              <span>{{ order.customer.phone }}</span>
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"/></svg><span>{{ order.customer.name }}</span><span style="color:var(--text-muted)">·</span><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.8 19.79 19.79 0 01.22 2.18 2 2 0 012.18 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.09a16 16 0 006 6l.46-.46a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/></svg><span>{{ order.customer.phone }}</span>
             </div>
 
-            <!-- Items -->
             <div style="background:var(--surface-2,rgba(255,255,255,.03));border-radius:var(--r-lg);padding:.75rem 1rem;margin-bottom:1rem">
               <div *ngFor="let item of order.items" style="display:flex;align-items:center;gap:.625rem;padding:.3rem 0">
                 <img [src]="item.image" [alt]="item.name" style="width:2rem;height:2rem;border-radius:5px;object-fit:cover;flex-shrink:0" onerror="this.style.display='none'">
@@ -135,43 +113,40 @@ const NEXT_LABEL: Partial<Record<OrderStatus, string>> = {
               </div>
             </div>
 
-            <!-- Address + obs -->
-            <div style="display:flex;gap:.5rem;align-items:flex-start;font-size:.78rem;color:var(--text-muted);margin-bottom:.875rem">
-              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;margin-top:1px"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              <span>{{ order.customer.address }}</span>
-            </div>
+            <div style="display:flex;gap:.5rem;align-items:flex-start;font-size:.78rem;color:var(--text-muted);margin-bottom:.875rem"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;margin-top:1px"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg><span>{{ order.customer.address }}</span></div>
             
-            <!-- Tempo estimado inserido conforme regra (Sprint 6)[cite: 17] -->
-            <div *ngIf="order.tempo_estimado" style="display:flex;gap:.5rem;align-items:center;font-size:.78rem;color:var(--text-muted);margin-bottom:.875rem">
-              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              <span>Tempo Estimado: {{ order.tempo_estimado }} min</span>
-            </div>
+            <div *ngIf="order.estimatedTime" style="display:flex;gap:.5rem;align-items:center;font-size:.78rem;color:var(--text-muted);margin-bottom:.875rem"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span>Tempo Estimado: {{ order.estimatedTime }} min</span></div>
 
-            <div *ngIf="order.observations" style="background:#fffbeb;border:1px solid #fde68a;border-radius:var(--r-md);padding:.5rem .75rem;font-size:.78rem;color:#92400e;margin-bottom:.875rem">
-              📝 {{ order.observations }}
-            </div>
+            <div *ngIf="order.observations" style="background:#fffbeb;border:1px solid #fde68a;border-radius:var(--r-md);padding:.5rem .75rem;font-size:.78rem;color:#92400e;margin-bottom:.875rem">📝 {{ order.observations }}</div>
             
-            <div *ngIf="order.motivo_cancelamento" style="background:var(--danger-bg);border:1px solid var(--danger-border);border-radius:var(--r-md);padding:.5rem .75rem;font-size:.78rem;color:var(--danger-text);margin-bottom:.875rem">
-              Motivo do cancelamento: {{ order.motivo_cancelamento }}
-            </div>
+            <div *ngIf="order.cancelReason" style="background:var(--danger-bg);border:1px solid var(--danger-border);border-radius:var(--r-md);padding:.5rem .75rem;font-size:.78rem;color:var(--danger-text);margin-bottom:.875rem">Motivo do cancelamento: {{ order.cancelReason }}</div>
 
-            <!-- Actions -->
+            <!-- Actions com Formulário de Cancelamento Inline -->
             <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.625rem">
-              <div style="display:flex;gap:.5rem;flex-wrap:wrap">
-                <button *ngIf="nextStatus(order.status)"
-                  (click)="advance(order)"
-                  [disabled]="updating === order.id"
-                  style="padding:.5rem 1rem;background:var(--brand-600);color:#fff;border:none;border-radius:var(--r-lg);font-size:.78rem;font-weight:600;cursor:pointer;transition:opacity .15s"
-                  [style.opacity]="updating === order.id ? '.6' : '1'">
-                  {{ updating === order.id ? 'Atualizando...' : nextLabel(order.status) }}
-                </button>
-                <button *ngIf="order.status !== 'cancelled' && order.status !== 'delivered'"
-                  (click)="cancel(order)"
-                  style="padding:.5rem 1rem;background:transparent;color:var(--text-muted);border:1px solid var(--border);border-radius:var(--r-lg);font-size:.78rem;cursor:pointer;transition:all .15s"
-                  onmouseenter="this.style.color='#ef4444';this.style.borderColor='#ef4444'"
-                  onmouseleave="this.style.color='';this.style.borderColor=''">
-                  Cancelar
-                </button>
+              <div style="display:flex;gap:.5rem;flex-wrap:wrap;width:100%">
+                <ng-container *ngIf="cancelingId !== order.id">
+                  <button *ngIf="nextStatus(order.status)"
+                    (click)="advance(order)"
+                    [disabled]="updating === order.id"
+                    style="padding:.5rem 1rem;background:var(--brand-600);color:#fff;border:none;border-radius:var(--r-lg);font-size:.78rem;font-weight:600;cursor:pointer;transition:opacity .15s"
+                    [style.opacity]="updating === order.id ? '.6' : '1'">
+                    {{ updating === order.id ? 'Atualizando...' : nextLabel(order.status) }}
+                  </button>
+                  <button *ngIf="order.status !== 'cancelled' && order.status !== 'delivered'"
+                    (click)="cancelingId = order.id"
+                    style="padding:.5rem 1rem;background:transparent;color:var(--text-muted);border:1px solid var(--border);border-radius:var(--r-lg);font-size:.78rem;cursor:pointer;transition:all .15s"
+                    onmouseenter="this.style.color='#ef4444';this.style.borderColor='#ef4444'"
+                    onmouseleave="this.style.color='';this.style.borderColor=''">
+                    Cancelar
+                  </button>
+                </ng-container>
+
+                <!-- Input de Motivo na Tela -->
+                <div *ngIf="cancelingId === order.id" style="display:flex;gap:.5rem;width:100%">
+                  <input type="text" [(ngModel)]="cancelReasonText" placeholder="Motivo do cancelamento..." style="flex:1;padding:.4rem .75rem;border:1px solid var(--danger);border-radius:var(--r-md);font-size:.78rem;outline:none;color:var(--text-primary);background:var(--surface-1)">
+                  <button (click)="confirmCancel(order)" style="padding:.4rem .75rem;background:var(--danger);color:#fff;border:none;border-radius:var(--r-md);font-size:.78rem;cursor:pointer">Confirmar</button>
+                  <button (click)="cancelingId = null; cancelReasonText = ''" style="padding:.4rem .75rem;background:transparent;border:1px solid var(--border);border-radius:var(--r-md);font-size:.78rem;cursor:pointer;color:var(--text-muted)">Voltar</button>
+                </div>
               </div>
             </div>
           </div>
@@ -193,6 +168,8 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   activeTab = signal<OrderStatus | 'all'>('all');
   search = signal('');
   updating: string | null = null;
+  cancelingId: string | null = null;
+  cancelReasonText = '';
 
   allOrders = signal<Order[]>([]);
   private sub?: Subscription;
@@ -232,8 +209,7 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    
-    this.sub = this.ordersService.orders$.subscribe({
+    this.sub = this.ordersService.orders.subscribe({
       next: orders => this.allOrders.set(orders),
       error: err => console.error('[OrdersManagement] orders error:', err),
     });
@@ -252,50 +228,45 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     return this.allOrders().filter(o => o.status === tab).length;
   }
 
-  
-  advance(order: Order) {
+  async advance(order: Order) {
     const next = this.nextStatus(order.status);
     if (!next || this.updating) return;
     
     this.updating = order.id;
-    this.ordersService.updateStatus(order.id, next).subscribe({
-      next: () => {
-        this.toastService.show('Status atualizado com sucesso.', 'success');
-        this.updating = null;
-      },
-      error: (err) => {
-        if (err.status === 409) {
-          this.toastService.show(err.error.message, 'error');
-        } else {
-          this.toastService.show('Erro ao atualizar o pedido.', 'error');
-        }
-        this.updating = null;
+    try {
+      await this.ordersService.updateStatus(order.id, next);
+      this.toastService.show('Status atualizado com sucesso.', 'success');
+    } catch (err: any) {
+      if (err.status === 409) {
+        this.toastService.show(err.error?.message || 'Erro ao atualizar', 'error');
+      } else {
+        this.toastService.show('Erro ao atualizar o pedido.', 'error');
       }
-    });
+    } finally {
+      this.updating = null;
+    }
   }
 
-  // Cancelamento com motivo, usando chamada HTTP do serviço[cite: 17]
-  cancel(order: Order) {
-    if (this.updating) return;
-    
-    const motivo = window.prompt("Qual o motivo do cancelamento?");
-    if (!motivo) return; 
+  async confirmCancel(order: Order) {
+    if (!this.cancelReasonText.trim()) {
+      this.toastService.show('Informe o motivo.', 'error');
+      return;
+    }
     
     this.updating = order.id;
-    
-    this.ordersService.cancelOrder(order.id, motivo).subscribe({
-      next: () => {
-        this.toastService.show('Pedido cancelado.', 'success');
-        this.updating = null;
-      },
-      error: (err) => {
-        if (err.status === 409) {
-          this.toastService.show(err.error.message, 'error');
-        } else {
-          this.toastService.show('Erro ao cancelar o pedido.', 'error');
-        }
-        this.updating = null;
+    try {
+      await this.ordersService.cancelOrder(order.id, this.cancelReasonText);
+      this.toastService.show('Pedido cancelado.', 'success');
+    } catch (err: any) {
+      if (err.status === 409) {
+        this.toastService.show(err.error?.message || 'Erro ao cancelar', 'error');
+      } else {
+        this.toastService.show('Erro ao cancelar o pedido.', 'error');
       }
-    });
+    } finally {
+      this.updating = null;
+      this.cancelingId = null;
+      this.cancelReasonText = '';
+    }
   }
 }
