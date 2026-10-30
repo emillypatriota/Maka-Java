@@ -46,6 +46,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/cardapio/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/pedidos").permitAll()
                         .requestMatchers("/api/auth/me").authenticated()
+                        .requestMatchers("/api/admin/**").hasRole("MANAGER")
 
                         // TODO (Sprint 2, avisar o grupo 2 dias antes): trocar o permitAll abaixo por
                         // .requestMatchers("/api/funcionarios/**").hasRole("MANAGER")
