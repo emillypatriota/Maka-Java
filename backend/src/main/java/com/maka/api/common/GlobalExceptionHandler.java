@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import jakarta.validation.ConstraintViolationException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +40,11 @@ public class GlobalExceptionHandler {
         ex.getBindingResult().getFieldErrors()
                 .forEach(e -> campos.putIfAbsent(e.getField(), e.getDefaultMessage()));
         return montar(HttpStatus.BAD_REQUEST, "Dados inválidos", campos);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErroResponse> restricaoDeParametro(ConstraintViolationException ex) {
+        return montar(HttpStatus.BAD_REQUEST, "Parâmetro inválido", null);
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)

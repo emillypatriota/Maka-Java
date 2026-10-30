@@ -46,6 +46,13 @@ CREATE TABLE IF NOT EXISTS produto_tag (
   FOREIGN KEY (produto_id) REFERENCES produto(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS ingrediente (
+  id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+  nome            VARCHAR(100) NOT NULL,
+  unidade_medida  VARCHAR(20) NOT NULL,
+  custo_unitario  DECIMAL(12,4) NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS pedido (
   id                   BIGINT AUTO_INCREMENT PRIMARY KEY,
   cliente_nome         VARCHAR(100) NOT NULL,

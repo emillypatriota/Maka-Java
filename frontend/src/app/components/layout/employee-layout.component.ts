@@ -330,6 +330,7 @@ export class EmployeeLayoutComponent implements OnInit, OnDestroy {
     const url = this.router.url;
     if (url.includes('dashboard'))    return 'Dashboard';
     if (url.includes('pedidos'))      return 'Pedidos';
+    if (url.includes('ingredientes')) return 'Ingredientes';
     if (url.includes('cardapio'))     return 'Cardápio';
     if (url.includes('cozinha'))      return 'Cozinha';
     if (url.includes('entregas'))     return 'Entregas';
@@ -359,6 +360,11 @@ export class EmployeeLayoutComponent implements OnInit, OnDestroy {
             label: 'Cardápio',
             route: '/gerente/cardapio',
             icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2"/><path d="M9 12h6M9 16h4"/></svg>`,
+          },
+          {
+            label: 'Ingredientes',
+            route: '/gerente/ingredientes',
+            icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19h16M6 16l2-8h8l2 8M9 8V5a3 3 0 016 0v3M10 12h4"/></svg>`,
           },
           {
             label: 'Cozinha',
