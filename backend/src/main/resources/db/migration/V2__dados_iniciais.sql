@@ -1,4 +1,4 @@
-USE maka;
+-- V2: logins de teste, cardápio (27 pratos) e funcionários (6).
 
 INSERT IGNORE INTO usuario (email, senha_hash, nome, perfil) VALUES
 ('gerente@maka.com',    '$2a$10$4x2xL1lBcaSerMXVLW5BFOSa4n/4p312GX9FeQmpAqdtogDsMVuma', 'Gerente',    'MANAGER'),
