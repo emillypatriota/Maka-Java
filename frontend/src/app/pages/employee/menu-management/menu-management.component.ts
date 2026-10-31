@@ -85,7 +85,7 @@ const STATUS_FILTERS: { value: DishStatus | ''; label: string }[] = [
       </div>
 
       <!-- Status filter -->
-      <div style="display:flex;gap:.5rem;margin-bottom:1.5rem;flex-wrap:wrap" role="group" aria-label="Filtrar por status">
+      <div class="dark-pills" style="display:flex;gap:.5rem;margin-bottom:1.5rem;flex-wrap:wrap" role="group" aria-label="Filtrar por status">
         <button *ngFor="let f of statusFilters" class="cat-pill" [class.active]="statusFilter === f.value" (click)="setStatus(f.value)">
           {{ f.label }}
         </button>
