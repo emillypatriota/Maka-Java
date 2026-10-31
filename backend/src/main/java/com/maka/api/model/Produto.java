@@ -9,11 +9,14 @@ import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
 
@@ -39,20 +42,27 @@ public class Produto {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal preco;
 
-    @Column(nullable = false, length = 60)
-    private String categoria;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "categoria_id")
+    private Categoria categoria;
 
     @Column(length = 500)
     private String imagem;
 
     private Boolean destaque = false;
 
-    private Boolean ativo = true;
+    // Nasce PAUSADO: só fica ATIVO com ficha técnica (RN01)
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private StatusPrato status = StatusPrato.PAUSADO;
 
     @Column(name = "tempo_preparo")
     private Integer tempoPreparo;
 
     private Integer calorias;
+
+    @Column(name = "modo_preparo", columnDefinition = "TEXT")
+    private String modoPreparo;
 
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "produto_tag", joinColumns = @JoinColumn(name = "produto_id"))
