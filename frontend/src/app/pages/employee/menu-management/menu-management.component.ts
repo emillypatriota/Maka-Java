@@ -58,8 +58,8 @@ const EMPTY_FORM: MenuForm = {
           <input class="form-input" type="text" placeholder="Buscar item..." [ngModel]="search()" (ngModelChange)="search.set($event)">
         </div>
 
-        <!-- Category filter -->
-        <div class="cat-nav dark-pills" style="flex:1;min-width:0">
+        <!-- Category filter: width:0 impede as pílulas de alargar a página no tablet (RNF09) -->
+        <div class="cat-nav dark-pills" style="flex:1 1 260px;width:0;min-width:0">
           <button class="cat-pill" [class.active]="!activeCategory()" (click)="activeCategory.set('')">
             Todos ({{ allItems().length }})
           </button>
