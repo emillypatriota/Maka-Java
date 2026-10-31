@@ -22,9 +22,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import com.maka.api.produto.dto.AtivoRequest;
+import com.maka.api.produto.dto.AdminProdutoResponse;
 import com.maka.api.produto.dto.ProdutoRequest;
-import com.maka.api.produto.dto.ProdutoResponse;
+import com.maka.api.produto.dto.ResumoCardapioResponse;
+import com.maka.api.produto.dto.StatusRequest;
 
 // Gestão do cardápio (MANAGER, pela regra /api/admin/** do SecurityConfig)
 @RestController
@@ -38,22 +39,30 @@ public class AdminProdutoController {
         this.produtoService = produtoService;
     }
 
+    // status: active, paused ou inactive; busca: parte do nome
     @GetMapping
-    public Page<ProdutoResponse> listar(
+    public Page<AdminProdutoResponse> listar(
             @RequestParam(required = false) String categoria,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String busca,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-        return produtoService.listar(categoria, PageRequest.of(page, size, Sort.by("categoria", "id")));
+        return produtoService.listar(categoria, status, busca, PageRequest.of(page, size, Sort.by("categoria.id", "id")));
+    }
+
+    @GetMapping("/resumo")
+    public ResumoCardapioResponse resumo() {
+        return produtoService.resumo();
     }
 
     @GetMapping("/{id}")
-    public ProdutoResponse buscar(@PathVariable Long id) {
+    public AdminProdutoResponse buscar(@PathVariable Long id) {
         return produtoService.buscar(id);
     }
 
     @PostMapping
-    public ResponseEntity<ProdutoResponse> criar(@Valid @RequestBody ProdutoRequest request) {
-        ProdutoResponse criado = produtoService.criar(request);
+    public ResponseEntity<AdminProdutoResponse> criar(@Valid @RequestBody ProdutoRequest request) {
+        AdminProdutoResponse criado = produtoService.criar(request);
         var location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(criado.getId())
@@ -62,13 +71,14 @@ public class AdminProdutoController {
     }
 
     @PutMapping("/{id}")
-    public ProdutoResponse atualizar(@PathVariable Long id, @Valid @RequestBody ProdutoRequest request) {
+    public AdminProdutoResponse atualizar(@PathVariable Long id, @Valid @RequestBody ProdutoRequest request) {
         return produtoService.atualizar(id, request);
     }
 
-    @PatchMapping("/{id}/ativo")
-    public ProdutoResponse alterarAtivo(@PathVariable Long id, @Valid @RequestBody AtivoRequest request) {
-        return produtoService.alterarAtivo(id, request.active());
+    // RN01: só aceita active se o prato tiver ficha técnica
+    @PatchMapping("/{id}/status")
+    public AdminProdutoResponse alterarStatus(@PathVariable Long id, @Valid @RequestBody StatusRequest request) {
+        return produtoService.alterarStatus(id, request.status());
     }
 
     @DeleteMapping("/{id}")

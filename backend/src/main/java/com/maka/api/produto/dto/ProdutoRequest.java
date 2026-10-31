@@ -9,7 +9,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-// Mesmos nomes do MenuItem do front (frontend/src/app/models/index.ts)
+// Mesmos nomes do MenuItem do front (frontend/src/app/models/index.ts).
+// category é o nome da categoria. O status não vem aqui: muda por PATCH /status (RN01).
 public record ProdutoRequest(
         @NotBlank @Size(max = 120) String name,
         String description,
@@ -17,8 +18,8 @@ public record ProdutoRequest(
         @NotBlank @Size(max = 60) String category,
         @Size(max = 500) String image,
         Boolean isSpecial,
-        Boolean active,
         @Min(0) Integer prepTime,
         @Min(0) Integer calories,
+        String preparationMethod,
         List<@NotBlank @Size(max = 40) String> tags) {
 }
