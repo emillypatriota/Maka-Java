@@ -1,20 +1,37 @@
 import { Injectable, signal } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Observable, firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { errorMessage } from '../core/http-error';
 import { MenuItem } from '../models';
 
 export const CATEGORIES = ['Carnes Nobres', 'Entradas', 'Peixes & Frutos do Mar', 'Acompanhamentos', 'Sobremesas', 'Bebidas'];
 
-// Mensagem mostrada no toast enquanto a escrita não existe no backend
-const NOT_AVAILABLE = 'Disponível na próxima versão';
+// Resposta paginada do Spring (Page<ProdutoResponse>)
+interface MenuPage {
+  content: MenuItem[];
+  totalElements: number;
+}
+
+// Tamanho máximo aceito pelo backend: a tela de gestão ainda filtra tudo no front
+const ADMIN_PAGE_SIZE = 100;
 
 @Injectable({ providedIn: 'root' })
 export class MenuService {
+  private readonly adminEndpoint = `${environment.apiUrl}/admin/pratos`;
+
+  // Cardápio público: só pratos ativos
   private _items  = signal<MenuItem[]>([]);
   private _loaded = signal(false);
 
-  readonly items$  = this._items.asReadonly();
-  readonly loaded$ = this._loaded.asReadonly();
+  // Gestão: ativos e inativos (exige login de gerente)
+  private _adminItems  = signal<MenuItem[]>([]);
+  private _adminLoaded = signal(false);
+
+  readonly items$       = this._items.asReadonly();
+  readonly loaded$      = this._loaded.asReadonly();
+  readonly adminItems$  = this._adminItems.asReadonly();
+  readonly adminLoaded$ = this._adminLoaded.asReadonly();
 
   constructor(private http: HttpClient) { this.loadMenu(); }
 
@@ -31,25 +48,50 @@ export class MenuService {
     });
   }
 
+  loadAdmin(): void {
+    const params = new HttpParams().set('page', 0).set('size', ADMIN_PAGE_SIZE);
+    this.http.get<MenuPage>(this.adminEndpoint, { params }).subscribe({
+      next: page => {
+        this._adminItems.set(page.content);
+        this._adminLoaded.set(true);
+      },
+      error: () => {
+        this._adminItems.set([]);
+        this._adminLoaded.set(true);
+      },
+    });
+  }
+
   getAll(): MenuItem[] { return this._items(); }
   getCategories(): string[] { return CATEGORIES; }
   getByCategory(cat: string): MenuItem[] { return this._items().filter(i => i.category === cat); }
   getSpecials(): MenuItem[] { return this._items().filter(i => i.isSpecial).slice(0, 3); }
 
-  // TODO (Sprint 2 – Gestão): POST /api/cardapio e recarregar a lista
   async addItem(item: Omit<MenuItem, 'id'>): Promise<void> {
-    throw new Error(NOT_AVAILABLE);
+    await this.write(this.http.post(this.adminEndpoint, item));
   }
-  // TODO (Sprint 2 – Gestão): PUT /api/cardapio/{id} e recarregar a lista
+
   async updateItem(id: string, data: Partial<MenuItem>): Promise<void> {
-    throw new Error(NOT_AVAILABLE);
+    await this.write(this.http.put(`${this.adminEndpoint}/${id}`, data));
   }
-  // TODO (Sprint 2 – Gestão): DELETE /api/cardapio/{id} e recarregar a lista
+
+  // Exclusão lógica: o prato sai do cardápio público, mas continua no banco
   async deleteItem(id: string): Promise<void> {
-    throw new Error(NOT_AVAILABLE);
+    await this.write(this.http.delete(`${this.adminEndpoint}/${id}`));
   }
-  // TODO (Sprint 2 – Gestão): PATCH /api/cardapio/{id}/ativo e recarregar a lista
+
   async toggleItem(id: string, active: boolean): Promise<void> {
-    throw new Error(NOT_AVAILABLE);
+    await this.write(this.http.patch(`${this.adminEndpoint}/${id}/ativo`, { active }));
+  }
+
+  // Envia a escrita, recarrega as duas listas e devolve a mensagem do backend em caso de erro
+  private async write(request: Observable<unknown>): Promise<void> {
+    try {
+      await firstValueFrom(request);
+    } catch (e) {
+      throw new Error(errorMessage(e, 'Erro ao salvar. Tente novamente.'));
+    }
+    this.loadMenu();
+    this.loadAdmin();
   }
 }
