@@ -3,37 +3,40 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { errorMessage } from '../core/http-error';
-import { MenuItem } from '../models';
+import { Category, DishStatus, MenuItem, MenuSummary, Page, TechnicalSheet } from '../models';
 
-export const CATEGORIES = ['Carnes Nobres', 'Entradas', 'Peixes & Frutos do Mar', 'Acompanhamentos', 'Sobremesas', 'Bebidas'];
-
-// Resposta paginada do Spring (Page<ProdutoResponse>)
-interface MenuPage {
-  content: MenuItem[];
-  totalElements: number;
+export interface AdminDishFilters {
+  page: number;
+  size: number;
+  category?: string;
+  status?: DishStatus | '';
+  search?: string;
 }
 
-// Tamanho máximo aceito pelo backend: a tela de gestão ainda filtra tudo no front
-const ADMIN_PAGE_SIZE = 100;
+export interface TechnicalSheetInput {
+  ingredientId: number;
+  quantity: number;
+  correctionFactor: number;
+}
 
 @Injectable({ providedIn: 'root' })
 export class MenuService {
-  private readonly adminEndpoint = `${environment.apiUrl}/admin/pratos`;
+  private readonly adminDishes     = `${environment.apiUrl}/admin/pratos`;
+  private readonly adminCategories = `${environment.apiUrl}/admin/categorias`;
 
-  // Cardápio público: só pratos ativos
-  private _items  = signal<MenuItem[]>([]);
-  private _loaded = signal(false);
+  // Cardápio público: só pratos ativos de categorias ativas (RN09)
+  private _items      = signal<MenuItem[]>([]);
+  private _loaded     = signal(false);
+  private _categories = signal<string[]>([]);
 
-  // Gestão: ativos e inativos (exige login de gerente)
-  private _adminItems  = signal<MenuItem[]>([]);
-  private _adminLoaded = signal(false);
+  readonly items$      = this._items.asReadonly();
+  readonly loaded$     = this._loaded.asReadonly();
+  readonly categories$ = this._categories.asReadonly();
 
-  readonly items$       = this._items.asReadonly();
-  readonly loaded$      = this._loaded.asReadonly();
-  readonly adminItems$  = this._adminItems.asReadonly();
-  readonly adminLoaded$ = this._adminLoaded.asReadonly();
-
-  constructor(private http: HttpClient) { this.loadMenu(); }
+  constructor(private http: HttpClient) {
+    this.loadMenu();
+    this.loadCategories();
+  }
 
   private loadMenu(): void {
     this.http.get<MenuItem[]>(`${environment.apiUrl}/cardapio`).subscribe({
@@ -48,50 +51,98 @@ export class MenuService {
     });
   }
 
-  loadAdmin(): void {
-    const params = new HttpParams().set('page', 0).set('size', ADMIN_PAGE_SIZE);
-    this.http.get<MenuPage>(this.adminEndpoint, { params }).subscribe({
-      next: page => {
-        this._adminItems.set(page.content);
-        this._adminLoaded.set(true);
-      },
-      error: () => {
-        this._adminItems.set([]);
-        this._adminLoaded.set(true);
-      },
+  private loadCategories(): void {
+    this.http.get<Category[]>(`${environment.apiUrl}/cardapio/categorias`).subscribe({
+      next: categories => this._categories.set(categories.map(c => c.name)),
+      error: () => this._categories.set([]),
     });
   }
 
   getAll(): MenuItem[] { return this._items(); }
-  getCategories(): string[] { return CATEGORIES; }
+  getCategories(): string[] { return this._categories(); }
   getByCategory(cat: string): MenuItem[] { return this._items().filter(i => i.category === cat); }
   getSpecials(): MenuItem[] { return this._items().filter(i => i.isSpecial).slice(0, 3); }
 
-  async addItem(item: Omit<MenuItem, 'id'>): Promise<void> {
-    await this.write(this.http.post(this.adminEndpoint, item));
+  // ── Gestão de pratos (gerente) ──────────────────────────────
+
+  listAdmin(filters: AdminDishFilters): Promise<Page<MenuItem>> {
+    let params = new HttpParams().set('page', filters.page).set('size', filters.size);
+    if (filters.category) params = params.set('categoria', filters.category);
+    if (filters.status)   params = params.set('status', filters.status);
+    if (filters.search?.trim()) params = params.set('busca', filters.search.trim());
+    return this.read(this.http.get<Page<MenuItem>>(this.adminDishes, { params }));
   }
 
-  async updateItem(id: string, data: Partial<MenuItem>): Promise<void> {
-    await this.write(this.http.put(`${this.adminEndpoint}/${id}`, data));
+  summary(): Promise<MenuSummary> {
+    return this.read(this.http.get<MenuSummary>(`${this.adminDishes}/resumo`));
   }
 
-  // Exclusão lógica: o prato sai do cardápio público, mas continua no banco
-  async deleteItem(id: string): Promise<void> {
-    await this.write(this.http.delete(`${this.adminEndpoint}/${id}`));
+  // Prato novo nasce pausado: só ativa depois de ter ficha técnica (RN01)
+  addItem(item: Omit<MenuItem, 'id'>): Promise<MenuItem> {
+    return this.write(this.http.post<MenuItem>(this.adminDishes, item));
   }
 
-  async toggleItem(id: string, active: boolean): Promise<void> {
-    await this.write(this.http.patch(`${this.adminEndpoint}/${id}/ativo`, { active }));
+  updateItem(id: string, data: Partial<MenuItem>): Promise<MenuItem> {
+    return this.write(this.http.put<MenuItem>(`${this.adminDishes}/${id}`, data));
   }
 
-  // Envia a escrita, recarrega as duas listas e devolve a mensagem do backend em caso de erro
-  private async write(request: Observable<unknown>): Promise<void> {
+  setStatus(id: string, status: DishStatus): Promise<MenuItem> {
+    return this.write(this.http.patch<MenuItem>(`${this.adminDishes}/${id}/status`, { status }));
+  }
+
+  // Exclusão lógica: o prato fica inativo, mas continua no banco
+  deleteItem(id: string): Promise<unknown> {
+    return this.write(this.http.delete(`${this.adminDishes}/${id}`));
+  }
+
+  // ── Ficha técnica ───────────────────────────────────────────
+
+  getTechnicalSheet(dishId: string): Promise<TechnicalSheet> {
+    return this.read(this.http.get<TechnicalSheet>(`${this.adminDishes}/${dishId}/ficha-tecnica`));
+  }
+
+  saveTechnicalSheet(dishId: string, items: TechnicalSheetInput[]): Promise<TechnicalSheet> {
+    return this.write(this.http.put<TechnicalSheet>(`${this.adminDishes}/${dishId}/ficha-tecnica`, { items }));
+  }
+
+  // ── Categorias ──────────────────────────────────────────────
+
+  listAdminCategories(page = 0, size = 100): Promise<Page<Category>> {
+    const params = new HttpParams().set('page', page).set('size', size);
+    return this.read(this.http.get<Page<Category>>(this.adminCategories, { params }));
+  }
+
+  addCategory(name: string): Promise<Category> {
+    return this.write(this.http.post<Category>(this.adminCategories, { name }));
+  }
+
+  updateCategory(id: string, data: Pick<Category, 'name'> & Partial<Pick<Category, 'status'>>): Promise<Category> {
+    return this.write(this.http.put<Category>(`${this.adminCategories}/${id}`, data));
+  }
+
+  // Exclusão lógica: os pratos da categoria saem do cardápio público
+  deleteCategory(id: string): Promise<unknown> {
+    return this.write(this.http.delete(`${this.adminCategories}/${id}`));
+  }
+
+  private async read<T>(request: Observable<T>): Promise<T> {
     try {
-      await firstValueFrom(request);
+      return await firstValueFrom(request);
+    } catch (e) {
+      throw new Error(errorMessage(e, 'Erro ao carregar. Verifique a conexão.'));
+    }
+  }
+
+  // Envia a escrita, atualiza o cardápio público e devolve a mensagem do backend em caso de erro
+  private async write<T>(request: Observable<T>): Promise<T> {
+    let result: T;
+    try {
+      result = await firstValueFrom(request);
     } catch (e) {
       throw new Error(errorMessage(e, 'Erro ao salvar. Tente novamente.'));
     }
     this.loadMenu();
-    this.loadAdmin();
+    this.loadCategories();
+    return result;
   }
 }

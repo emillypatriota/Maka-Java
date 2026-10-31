@@ -39,6 +39,62 @@ export interface MenuItem {
   calories?: number;
   tags?: string[];       // 'vegano', 'sem-gluten', etc.
   createdAt?: Date;
+  status?: DishStatus;          // banco: ATIVO, PAUSADO, INATIVO
+  preparationMethod?: string;   // modo de preparo (RF-014)
+  // Só na gestão (/api/admin/pratos): custo da ficha técnica, null se não houver ficha
+  hasTechnicalSheet?: boolean;
+  cost?: number | null;
+  foodCost?: number | null;     // % do preço
+  foodCostLevel?: FoodCostLevel | null;
+  foodCostWarning?: boolean | null;  // RN02: food cost acima de 35%
+}
+
+export type DishStatus = 'active' | 'paused' | 'inactive';
+export type FoodCostLevel = 'green' | 'yellow' | 'red';
+
+export interface Category {
+  id: string;
+  name: string;
+  status: 'active' | 'inactive';   // banco: ATIVO, INATIVO
+}
+
+export interface MenuSummary {
+  total: number;
+  active: number;
+  paused: number;
+  inactive: number;
+}
+
+// Resposta paginada do Spring (Page<T>)
+export interface Page<T> {
+  content: T[];
+  number: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+// Ficha técnica (RF-011). quantity e unitCost na unidade do ingrediente
+export interface TechnicalSheetItem {
+  ingredientId: number;
+  ingredientName: string;
+  unit: string;
+  unitCost: number;
+  quantity: number;
+  correctionFactor: number;
+  cost: number;
+}
+
+export interface TechnicalSheet {
+  dishId: string;
+  dishName: string;
+  price: number;
+  status: DishStatus;
+  items: TechnicalSheetItem[];
+  cost: number | null;
+  foodCost: number | null;
+  foodCostLevel: FoodCostLevel | null;
+  foodCostWarning: boolean;
 }
 
 export interface CartItem extends MenuItem {
