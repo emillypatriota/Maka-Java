@@ -27,10 +27,13 @@ export class MenuService {
   // Cardápio público: só pratos ativos de categorias ativas (RN09)
   private _items      = signal<MenuItem[]>([]);
   private _loaded     = signal(false);
+  private _loadedOk   = signal(false);
   private _categories = signal<string[]>([]);
 
   readonly items$      = this._items.asReadonly();
   readonly loaded$     = this._loaded.asReadonly();
+  // true só quando o cardápio veio da API: com erro de rede, o carrinho não deve ser mexido
+  readonly loadedOk$   = this._loadedOk.asReadonly();
   readonly categories$ = this._categories.asReadonly();
 
   constructor(private http: HttpClient) {
@@ -43,6 +46,7 @@ export class MenuService {
       next: items => {
         this._items.set(items);
         this._loaded.set(true);
+        this._loadedOk.set(true);
       },
       error: () => {
         this._items.set([]);

@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { NgFor, NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ToastService } from '../../../services/toast.service';
@@ -30,7 +30,7 @@ const STATUS_CONFIG: Record<StaffStatus, { label: string; color: string; bg: str
         <div>
           <h1 style="font-family:var(--font-display);font-size:1.875rem;color:var(--text-primary)">Funcionários</h1>
           <p style="color:var(--text-tertiary);font-size:var(--text-base);margin-top:.25rem">
-            {{ activeCount }} ativos · {{ staff().length }} no total
+            {{ summary()?.active ?? '—' }} ativos · {{ summary()?.total ?? '—' }} no total
           </p>
         </div>
         <button (click)="openModal()" class="btn btn-primary" style="display:flex;align-items:center;gap:.5rem">
@@ -52,14 +52,14 @@ const STATUS_CONFIG: Record<StaffStatus, { label: string; color: string; bg: str
       <div style="display:flex;gap:.875rem;flex-wrap:wrap;margin-bottom:1.25rem">
         <div style="position:relative;flex:1;min-width:200px">
           <svg style="position:absolute;left:.875rem;top:50%;transform:translateY(-50%);color:var(--text-muted)" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input type="text" placeholder="Buscar por nome, cargo ou telefone..."
-            [value]="search()" (input)="search.set($any($event.target).value)"
+          <input type="text" placeholder="Buscar por nome, e-mail ou telefone..." aria-label="Buscar funcionário"
+            [value]="search()" (input)="onSearch($any($event.target).value)"
             style="width:100%;padding:.625rem .875rem .625rem 2.375rem;background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-lg);color:var(--text-primary);font-size:.82rem;outline:none">
         </div>
 
         <div style="display:flex;gap:.375rem">
           <button *ngFor="let f of roleFilters"
-            (click)="activeRole.set(f.value)"
+            (click)="setRole(f.value)"
             [style.background]="activeRole()===f.value ? 'var(--brand-600)' : 'var(--surface-1)'"
             [style.color]="activeRole()===f.value ? '#fff' : 'var(--text-muted)'"
             [style.borderColor]="activeRole()===f.value ? 'var(--brand-600)' : 'var(--border)'"
@@ -71,7 +71,7 @@ const STATUS_CONFIG: Record<StaffStatus, { label: string; color: string; bg: str
 
       <!-- Staff grid -->
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1.125rem">
-        <div *ngFor="let member of filtered()" class="staff-card"
+        <div *ngFor="let member of staff()" class="staff-card"
              style="background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-xl);overflow:hidden;transition:all .2s">
 
           <!-- Color top bar -->
@@ -141,12 +141,31 @@ const STATUS_CONFIG: Record<StaffStatus, { label: string; color: string; bg: str
           </div>
         </div>
 
-        <!-- Empty state -->
-        <div *ngIf="filtered().length === 0" style="grid-column:1/-1;text-align:center;padding:4rem 2rem;background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-2xl)">
+        <!-- Empty / loading / error -->
+        <div *ngIf="staff().length === 0" role="status" style="grid-column:1/-1;text-align:center;padding:4rem 2rem;background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-2xl)">
           <div style="font-size:3rem;margin-bottom:1rem">👥</div>
-          <p style="color:var(--text-muted)">Nenhum funcionário encontrado</p>
+          <p *ngIf="!loaded()" style="color:var(--text-muted)">Carregando funcionários...</p>
+          <p *ngIf="loaded() && !error()" style="color:var(--text-muted)">Nenhum funcionário encontrado</p>
+          <ng-container *ngIf="loaded() && error()">
+            <p style="color:var(--danger-text);margin-bottom:1rem">{{ error() }}</p>
+            <button class="btn btn-ghost btn-sm" (click)="staffService.load()">Tentar de novo</button>
+          </ng-container>
         </div>
       </div>
+
+      <!-- Pagination -->
+      <footer *ngIf="page().totalElements > 0"
+              style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;padding:1.25rem 0">
+        <span style="font-size:var(--text-sm);color:var(--text-tertiary)">
+          {{ page().totalElements }} funcionário(s) · Página {{ page().number + 1 }} de {{ page().totalPages }}
+        </span>
+        <div style="display:flex;gap:.5rem">
+          <button class="btn btn-ghost btn-sm" type="button" [disabled]="page().number === 0"
+                  (click)="staffService.load({ page: page().number - 1 })">Anterior</button>
+          <button class="btn btn-ghost btn-sm" type="button" [disabled]="page().number + 1 >= page().totalPages"
+                  (click)="staffService.load({ page: page().number + 1 })">Próxima</button>
+        </div>
+      </footer>
 
     </div>
 
@@ -230,9 +249,15 @@ const STATUS_CONFIG: Record<StaffStatus, { label: string; color: string; bg: str
     .staff-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,.12); transform: translateY(-2px); }
   `]
 })
-export class StaffManagementComponent implements OnInit {
-  get staff() { return this.staffService.staff$; }
+export class StaffManagementComponent implements OnInit, OnDestroy {
+  // A lista já vem filtrada e paginada do backend
+  get staff()   { return this.staffService.staff$; }
+  get loaded()  { return this.staffService.loaded$; }
+  get error()   { return this.staffService.error$; }
+  get page()    { return this.staffService.page$; }
+  get summary() { return this.staffService.summary$; }
   search = signal('');
+  private searchTimer?: ReturnType<typeof setTimeout>;
   activeRole = signal<StaffRole | 'all'>('all');
   modalOpen = signal(false);
   saving = false;
@@ -249,31 +274,31 @@ export class StaffManagementComponent implements OnInit {
     { label: 'Garçom',     value: 'waiter'   as StaffRole | 'all' },
   ];
 
-  filtered = computed(() => {
-    let list = this.staff();
-    if (this.activeRole() !== 'all') list = list.filter(m => m.role === this.activeRole());
-    const q = this.search().toLowerCase().trim();
-    if (q) list = list.filter(m =>
-      m.name.toLowerCase().includes(q) ||
-      m.phone.includes(q) ||
-      m.email.toLowerCase().includes(q)
-    );
-    return list;
-  });
-
-  get activeCount() { return this.staff().filter(m => m.status === 'active').length; }
-
   get roleKpis() {
+    const byRole = this.summary()?.byRole;
     return Object.entries(ROLE_CONFIG).map(([role, cfg]) => ({
       icon: cfg.icon, label: cfg.label,
-      count: this.staff().filter(m => m.role === role).length,
+      count: byRole ? byRole[role as StaffRole] ?? 0 : '—',
     }));
   }
 
-  constructor(private toast: ToastService, private staffService: StaffService) {}
+  constructor(private toast: ToastService, public staffService: StaffService) {}
 
   ngOnInit() {
-    this.staffService.load();
+    this.staffService.load({ page: 0, role: 'all', search: '' });
+  }
+
+  ngOnDestroy() { clearTimeout(this.searchTimer); }
+
+  setRole(role: StaffRole | 'all') {
+    this.activeRole.set(role);
+    this.staffService.load({ role, page: 0 });
+  }
+
+  onSearch(value: string) {
+    this.search.set(value);
+    clearTimeout(this.searchTimer);
+    this.searchTimer = setTimeout(() => this.staffService.load({ search: value, page: 0 }), 300);
   }
 
   roleCfg(role: StaffRole)     { return ROLE_CONFIG[role]   ?? ROLE_CONFIG.waiter; }
