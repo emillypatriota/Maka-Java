@@ -1,5 +1,4 @@
-CREATE DATABASE IF NOT EXISTS maka CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE maka;
+-- V1: schema inicial do MAKA (o banco 'maka' já é criado pelo docker-compose).
 
 CREATE TABLE IF NOT EXISTS usuario (
   id          BIGINT AUTO_INCREMENT PRIMARY KEY,

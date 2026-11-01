@@ -18,9 +18,9 @@ Aplicação de gestão e pedidos para restaurante, com frontend Angular e API RE
    docker compose up -d mysql
    ```
 
-   O schema e os dados iniciais são carregados automaticamente na primeira criação do volume do MySQL.
-   Se o banco já existia antes da tabela `ingrediente`, aplique o `CREATE TABLE IF NOT EXISTS ingrediente`
-   correspondente em `backend/src/main/resources/schema.sql` no banco existente.
+   O MySQL sobe vazio. As tabelas e os dados iniciais são criados pelo Flyway quando a API sobe
+   (scripts em `backend/src/main/resources/db/migration`). Para zerar o banco:
+   `docker compose down -v` e depois `docker compose up -d mysql`.
 
 2. Em outro terminal, inicie a API:
 
