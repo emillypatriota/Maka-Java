@@ -28,6 +28,7 @@ public class CustoPratoService {
     public record ItemFicha(BigDecimal quantidade, BigDecimal custoUnitario, BigDecimal fatorCorrecao) {
     }
 
+    // custo e foodCost são da porção (receita dividida pelo rendimento)
     public record CustoPrato(BigDecimal custo, BigDecimal foodCost, Faixa faixa, boolean alerta) {
     }
 
@@ -49,13 +50,21 @@ public class CustoPratoService {
     }
 
     public CustoPrato calcular(List<ItemFicha> itens, BigDecimal precoVenda) {
+        return calcular(itens, precoVenda, 1);
+    }
+
+    // rendimento: quantas porções a receita rende
+    public CustoPrato calcular(List<ItemFicha> itens, BigDecimal precoVenda, int rendimento) {
         if (precoVenda == null || precoVenda.signum() <= 0) {
             throw new IllegalArgumentException("O preço de venda deve ser maior que zero");
+        }
+        if (rendimento < 1) {
+            throw new IllegalArgumentException("O rendimento deve ser de pelo menos 1 porção");
         }
         BigDecimal custo = itens.stream()
                 .map(this::custoItem)
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .setScale(2, RoundingMode.HALF_UP);
+                .divide(BigDecimal.valueOf(rendimento), 2, RoundingMode.HALF_UP);
 
         BigDecimal foodCost = custo.multiply(CEM).divide(precoVenda, 2, RoundingMode.HALF_UP);
         return new CustoPrato(custo, foodCost, faixa(foodCost), foodCost.compareTo(LIMITE_ALERTA) > 0);

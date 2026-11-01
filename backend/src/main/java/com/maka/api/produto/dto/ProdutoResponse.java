@@ -28,7 +28,6 @@ public class ProdutoResponse {
     private String status;
     private Integer prepTime;
     private Integer calories;
-    private String preparationMethod;
     private List<String> tags;
     private LocalDateTime createdAt;
 
@@ -51,7 +50,6 @@ public class ProdutoResponse {
         dto.setStatus(StatusPratoJson.toJson(produto.getStatus()));
         dto.setPrepTime(produto.getTempoPreparo());
         dto.setCalories(produto.getCalorias());
-        dto.setPreparationMethod(produto.getModoPreparo());
         dto.setTags(new ArrayList<>(produto.getTags()));
         dto.setCreatedAt(produto.getCriadoEm());
     }

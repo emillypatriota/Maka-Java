@@ -27,7 +27,7 @@ import com.maka.api.repository.ProdutoRepository;
 @Service
 public class ProdutoService {
 
-    private static final Sort ORDEM_CARDAPIO = Sort.by("categoria.id", "id");
+    private static final Sort ORDEM_CARDAPIO = Sort.by("categoria.ordem", "id");
 
     private final ProdutoRepository produtoRepository;
     private final CategoriaService categoriaService;
@@ -148,7 +148,6 @@ public class ProdutoService {
         produto.setImagem(temTexto(request.image()) ? request.image().trim() : null);
         produto.setDestaque(Boolean.TRUE.equals(request.isSpecial()));
         produto.setTempoPreparo(request.prepTime());
-        produto.setModoPreparo(temTexto(request.preparationMethod()) ? request.preparationMethod().trim() : null);
         // A tela de gestão não edita calorias nem tags: se não vierem, mantém o que já existe
         if (request.calories() != null) {
             produto.setCalorias(request.calories());

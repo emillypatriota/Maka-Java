@@ -15,13 +15,12 @@ interface MenuForm {
   image: string;
   isSpecial: boolean;
   prepTime: number | null;
-  preparationMethod: string;
 }
 
 const EMPTY_FORM: MenuForm = {
   name: '', description: '', price: null,
   category: '', image: '',
-  isSpecial: false, prepTime: null, preparationMethod: '',
+  isSpecial: false, prepTime: null,
 };
 
 const PAGE_SIZE = 12;
@@ -260,7 +259,7 @@ const STATUS_FILTERS: { value: DishStatus | ''; label: string }[] = [
           </div>
 
           <p *ngIf="!editingId" style="font-size:var(--text-sm);color:var(--text-tertiary);line-height:1.5">
-            O prato novo fica <strong>pausado</strong> até ter ficha técnica (RN01). Depois de salvar, você já monta a ficha.
+            O prato novo fica <strong>pausado</strong> até ter ficha técnica (RN01). Depois de salvar, você já monta a ficha, com os ingredientes, o rendimento e o modo de preparo.
           </p>
 
           <div class="item-form-grid">
@@ -308,12 +307,6 @@ const STATUS_FILTERS: { value: DishStatus | ''; label: string }[] = [
               </label>
             </div>
 
-            <!-- RF-014 -->
-            <div class="form-group" style="grid-column:1/-1">
-              <label class="form-label" for="item-method">Modo de preparo</label>
-              <textarea id="item-method" class="form-input" [(ngModel)]="form.preparationMethod" rows="4"
-                        placeholder="Passo a passo para a cozinha: 1. Selar a carne... 2. ..."></textarea>
-            </div>
           </div>
 
           <!-- Form error -->
@@ -502,7 +495,6 @@ export class MenuManagementComponent implements OnDestroy {
       image:             item.image ?? '',
       isSpecial:         !!item.isSpecial,
       prepTime:          item.prepTime ?? null,
-      preparationMethod: item.preparationMethod ?? '',
     };
     this.formError = '';
     this.showModal.set(true);
@@ -532,7 +524,6 @@ export class MenuManagementComponent implements OnDestroy {
       image:             this.form.image.trim() || 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=85',
       isSpecial:         this.form.isSpecial,
       prepTime:          this.form.prepTime ? Number(this.form.prepTime) : undefined,
-      preparationMethod: this.form.preparationMethod.trim(),
     };
 
     try {

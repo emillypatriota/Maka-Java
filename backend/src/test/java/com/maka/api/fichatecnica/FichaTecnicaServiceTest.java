@@ -2,6 +2,8 @@ package com.maka.api.fichatecnica;
 
 import com.maka.api.fichatecnica.dto.FichaTecnicaRequest;
 import com.maka.api.fichatecnica.dto.FichaTecnicaResponse;
+import com.maka.api.model.FichaTecnica;
+import com.maka.api.model.FichaTecnicaItem;
 import com.maka.api.model.Ingrediente;
 import com.maka.api.model.Produto;
 import com.maka.api.model.StatusPrato;
@@ -25,7 +27,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -51,44 +52,83 @@ class FichaTecnicaServiceTest {
     }
 
     @Test
-    void deveSalvarFichaECalcularOFoodCost() {
+    void deveCriarFichaECalcularOFoodCost() {
         Produto produto = produto(StatusPrato.PAUSADO, "100.00");
         when(produtoRepository.findById(1L)).thenReturn(Optional.of(produto));
-        when(ingredienteRepository.findAllById(any())).thenReturn(List.of(ingrediente(7L, "50.00")));
+        when(fichaTecnicaRepository.findByProdutoId(1L)).thenReturn(Optional.empty());
+        when(ingredienteRepository.findAllById(any())).thenReturn(List.of(ingrediente(7L, "g", "0.05")));
 
-        // 0,5 kg × 1,2 × R$ 50,00 = R$ 30,00 → 30% do preço
-        FichaTecnicaResponse resposta = service.salvar(1L, request(item(7L, "0.5", "1.2")));
+        // 500 g × 1,2 × R$ 0,05/g = R$ 30,00 → 30% do preço
+        FichaTecnicaResponse resposta = service.salvar(1L, request(1, "Grelhar", item(7L, "500", "g", "1.2")));
 
         assertEquals(new BigDecimal("30.00"), resposta.cost());
         assertEquals(new BigDecimal("30.00"), resposta.foodCost());
         assertEquals("green", resposta.foodCostLevel());
         assertFalse(resposta.foodCostWarning());
-        assertEquals(new BigDecimal("30.00"), resposta.items().get(0).cost());
-        verify(fichaTecnicaRepository).apagarDoProduto(1L);
-        verify(fichaTecnicaRepository).saveAll(any());
+        assertEquals("Grelhar", resposta.preparationMethod());
+        assertEquals("g", resposta.items().get(0).unit());
+        verify(fichaTecnicaRepository).save(any(FichaTecnica.class));
+    }
+
+    @Test
+    void deveConverterAUnidadeDoItemParaADoIngrediente() {
+        when(produtoRepository.findById(1L)).thenReturn(Optional.of(produto(StatusPrato.PAUSADO, "100.00")));
+        when(fichaTecnicaRepository.findByProdutoId(1L)).thenReturn(Optional.empty());
+        // ingrediente com custo por kg; ficha em gramas: 300 g = 0,3 kg × R$ 50,00 = R$ 15,00
+        when(ingredienteRepository.findAllById(any())).thenReturn(List.of(ingrediente(7L, "kg", "50.00")));
+
+        FichaTecnicaResponse resposta = service.salvar(1L, request(1, null, item(7L, "300", "g", "1")));
+
+        assertEquals(new BigDecimal("15.00"), resposta.cost());
+    }
+
+    @Test
+    void custoDaPorcaoDivideAReceitaPeloRendimento() {
+        when(produtoRepository.findById(1L)).thenReturn(Optional.of(produto(StatusPrato.PAUSADO, "50.00")));
+        when(fichaTecnicaRepository.findByProdutoId(1L)).thenReturn(Optional.empty());
+        when(ingredienteRepository.findAllById(any())).thenReturn(List.of(ingrediente(7L, "un", "40.00")));
+
+        // receita de R$ 40,00 que rende 4 porções → R$ 10,00 a porção → 20% de R$ 50,00
+        FichaTecnicaResponse resposta = service.salvar(1L, request(4, null, item(7L, "1", "un", "1")));
+
+        assertEquals(new BigDecimal("40.00"), resposta.batchCost());
+        assertEquals(new BigDecimal("10.00"), resposta.cost());
+        assertEquals(new BigDecimal("20.00"), resposta.foodCost());
+        assertEquals(4, resposta.servings());
     }
 
     @Test
     void deveAvisarQuandoFoodCostPassaDe35PorCento() {
         when(produtoRepository.findById(1L)).thenReturn(Optional.of(produto(StatusPrato.ATIVO, "100.00")));
-        when(ingredienteRepository.findAllById(any())).thenReturn(List.of(ingrediente(7L, "40.00")));
+        when(fichaTecnicaRepository.findByProdutoId(1L)).thenReturn(Optional.empty());
+        when(ingredienteRepository.findAllById(any())).thenReturn(List.of(ingrediente(7L, "un", "40.00")));
 
-        FichaTecnicaResponse resposta = service.salvar(1L, request(item(7L, "1", "1")));
+        FichaTecnicaResponse resposta = service.salvar(1L, request(1, null, item(7L, "1", "un", "1")));
 
         assertEquals("red", resposta.foodCostLevel());
         assertTrue(resposta.foodCostWarning());
     }
 
     @Test
-    void naoDeveApagarAFichaAntigaQuandoOFatorDeCorrecaoEInvalido() {
+    void naoDeveMexerNaFichaQuandoOFatorDeCorrecaoEInvalido() {
         when(produtoRepository.findById(1L)).thenReturn(Optional.of(produto(StatusPrato.ATIVO, "100.00")));
-        when(ingredienteRepository.findAllById(any())).thenReturn(List.of(ingrediente(7L, "40.00")));
+        when(ingredienteRepository.findAllById(any())).thenReturn(List.of(ingrediente(7L, "un", "40.00")));
 
         IllegalArgumentException erro = assertThrows(IllegalArgumentException.class,
-                () -> service.salvar(1L, request(item(7L, "1", "0.8"))));
+                () -> service.salvar(1L, request(1, null, item(7L, "1", "un", "0.8"))));
 
         assertEquals("O fator de correção deve ser maior ou igual a 1,0", erro.getMessage());
-        verify(fichaTecnicaRepository, never()).apagarDoProduto(anyLong());
+        verify(fichaTecnicaRepository, never()).save(any());
+    }
+
+    @Test
+    void deveRecusarUnidadeQueNaoCombinaComODoIngrediente() {
+        when(produtoRepository.findById(1L)).thenReturn(Optional.of(produto(StatusPrato.ATIVO, "100.00")));
+        when(ingredienteRepository.findAllById(any())).thenReturn(List.of(ingrediente(7L, "g", "0.05")));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.salvar(1L, request(1, null, item(7L, "1", "ml", "1"))));
+        verify(fichaTecnicaRepository, never()).save(any());
     }
 
     @Test
@@ -96,8 +136,8 @@ class FichaTecnicaServiceTest {
         when(produtoRepository.findById(1L)).thenReturn(Optional.of(produto(StatusPrato.ATIVO, "100.00")));
 
         assertThrows(IllegalArgumentException.class,
-                () -> service.salvar(1L, request(item(7L, "1", "1"), item(7L, "2", "1"))));
-        verify(fichaTecnicaRepository, never()).apagarDoProduto(anyLong());
+                () -> service.salvar(1L, request(1, null, item(7L, "1", "un", "1"), item(7L, "2", "un", "1"))));
+        verify(fichaTecnicaRepository, never()).save(any());
     }
 
     @Test
@@ -105,28 +145,35 @@ class FichaTecnicaServiceTest {
         when(produtoRepository.findById(1L)).thenReturn(Optional.of(produto(StatusPrato.ATIVO, "100.00")));
         when(ingredienteRepository.findAllById(any())).thenReturn(List.of());
 
-        assertThrows(NoSuchElementException.class, () -> service.salvar(1L, request(item(99L, "1", "1"))));
+        assertThrows(NoSuchElementException.class, () -> service.salvar(1L, request(1, null, item(99L, "1", "un", "1"))));
     }
 
     @Test
-    void fichaVaziaPausaOPratoAtivo() {
+    void fichaSemIngredientesPausaOPratoAtivo() {
         Produto produto = produto(StatusPrato.ATIVO, "100.00");
+        FichaTecnica existente = new FichaTecnica();
+        existente.setProduto(produto);
+        FichaTecnicaItem antigo = new FichaTecnicaItem();
+        antigo.setFichaTecnica(existente);
+        existente.getItens().add(antigo);
         when(produtoRepository.findById(1L)).thenReturn(Optional.of(produto));
+        when(fichaTecnicaRepository.findByProdutoId(1L)).thenReturn(Optional.of(existente));
         when(ingredienteRepository.findAllById(any())).thenReturn(List.of());
 
-        FichaTecnicaResponse resposta = service.salvar(1L, request());
+        FichaTecnicaResponse resposta = service.salvar(1L, request(1, "Montar", new FichaTecnicaRequest.Item[0]));
 
         assertEquals(StatusPrato.PAUSADO, produto.getStatus());
         assertEquals("paused", resposta.status());
+        assertTrue(existente.getItens().isEmpty());
         assertNull(resposta.cost());
     }
 
-    private static FichaTecnicaRequest request(FichaTecnicaRequest.Item... itens) {
-        return new FichaTecnicaRequest(List.of(itens));
+    private static FichaTecnicaRequest request(int rendimento, String modoPreparo, FichaTecnicaRequest.Item... itens) {
+        return new FichaTecnicaRequest(rendimento, modoPreparo, List.of(itens));
     }
 
-    private static FichaTecnicaRequest.Item item(Long ingredienteId, String quantidade, String fator) {
-        return new FichaTecnicaRequest.Item(ingredienteId, new BigDecimal(quantidade), new BigDecimal(fator));
+    private static FichaTecnicaRequest.Item item(Long ingredienteId, String quantidade, String unidade, String fator) {
+        return new FichaTecnicaRequest.Item(ingredienteId, new BigDecimal(quantidade), unidade, new BigDecimal(fator));
     }
 
     private static Produto produto(StatusPrato status, String preco) {
@@ -138,11 +185,11 @@ class FichaTecnicaServiceTest {
         return produto;
     }
 
-    private static Ingrediente ingrediente(Long id, String custo) {
+    private static Ingrediente ingrediente(Long id, String unidade, String custo) {
         Ingrediente ingrediente = new Ingrediente();
         ingrediente.setId(id);
         ingrediente.setNome("Ingrediente " + id);
-        ingrediente.setUnidadeMedida("kg");
+        ingrediente.setUnidadeMedida(unidade);
         ingrediente.setCustoUnitario(new BigDecimal(custo));
         return ingrediente;
     }

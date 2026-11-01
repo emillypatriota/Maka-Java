@@ -61,8 +61,6 @@ public class Produto {
 
     private Integer calorias;
 
-    @Column(name = "modo_preparo", columnDefinition = "TEXT")
-    private String modoPreparo;
 
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "produto_tag", joinColumns = @JoinColumn(name = "produto_id"))

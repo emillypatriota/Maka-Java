@@ -47,7 +47,7 @@ public class AdminProdutoController {
             @RequestParam(required = false) String busca,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-        return produtoService.listar(categoria, status, busca, PageRequest.of(page, size, Sort.by("categoria.id", "id")));
+        return produtoService.listar(categoria, status, busca, PageRequest.of(page, size, Sort.by("categoria.ordem", "id")));
     }
 
     @GetMapping("/resumo")

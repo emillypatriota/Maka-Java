@@ -110,11 +110,10 @@ class ProdutoServiceTest {
 
         AdminProdutoResponse resposta = service.criar(new ProdutoRequest(
                 "Bruschetta", "Pão e tomate", new BigDecimal("29.90"), "Entradas",
-                null, false, 10, null, "Tostar o pão", null));
+                null, false, 10, null, null));
 
         assertEquals("paused", resposta.getStatus());
         assertEquals(false, resposta.getHasTechnicalSheet());
-        assertEquals("Tostar o pão", resposta.getPreparationMethod());
     }
 
     @Test

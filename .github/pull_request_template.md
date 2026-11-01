@@ -10,7 +10,7 @@
 - [ ] O front funciona no navegador (se mexi nele)
 - [ ] O controller devolve DTO, não entidade
 - [ ] O JSON segue o `models/index.ts` e o contrato do plano
-- [ ] Não mexi em `schema.sql`, `pom.xml`, `package.json` ou `config/` sem avisar a Base
+- [ ] Não mexi em `db/migration`, `pom.xml`, `package.json` ou `config/` sem avisar a Base
 - [ ] Sem senha, `.env`, `System.out.println` ou `console.log` no código
 
 ## Como testar

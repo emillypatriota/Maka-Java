@@ -2,27 +2,22 @@ package com.maka.api.repository;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
-import com.maka.api.model.FichaTecnicaItem;
+import com.maka.api.model.FichaTecnica;
 
-public interface FichaTecnicaRepository extends JpaRepository<FichaTecnicaItem, Long> {
+public interface FichaTecnicaRepository extends JpaRepository<FichaTecnica, Long> {
 
-    @EntityGraph(attributePaths = "ingrediente")
-    List<FichaTecnicaItem> findByProdutoIdOrderById(Long produtoId);
+    @EntityGraph(attributePaths = {"itens", "itens.ingrediente"})
+    Optional<FichaTecnica> findByProdutoId(Long produtoId);
 
     // Uma consulta só para calcular o custo de uma página inteira de pratos
-    @EntityGraph(attributePaths = "ingrediente")
-    List<FichaTecnicaItem> findByProdutoIdIn(Collection<Long> produtoIds);
+    @EntityGraph(attributePaths = {"itens", "itens.ingrediente"})
+    List<FichaTecnica> findByProdutoIdIn(Collection<Long> produtoIds);
 
-    boolean existsByProdutoId(Long produtoId);
-
-    @Modifying
-    @Query("delete from FichaTecnicaItem f where f.produto.id = :produtoId")
-    void apagarDoProduto(@Param("produtoId") Long produtoId);
+    // RN01: ficha sem nenhum ingrediente não conta
+    boolean existsByProdutoIdAndItensIsNotEmpty(Long produtoId);
 }

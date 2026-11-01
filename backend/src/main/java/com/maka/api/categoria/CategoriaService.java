@@ -25,10 +25,10 @@ public class CategoriaService {
         this.categoriaRepository = categoriaRepository;
     }
 
-    // Cardápio público: só categorias ativas, na ordem de cadastro
+    // Cardápio público: só categorias ativas, na ordem das abas
     @Transactional(readOnly = true)
     public List<CategoriaResponse> listarAtivas() {
-        return categoriaRepository.findByStatus(StatusCategoria.ATIVO, Sort.by("id")).stream()
+        return categoriaRepository.findByStatus(StatusCategoria.ATIVO, Sort.by("ordem", "id")).stream()
                 .map(CategoriaResponse::from)
                 .toList();
     }
@@ -46,6 +46,8 @@ public class CategoriaService {
         }
         Categoria categoria = new Categoria();
         categoria.setNome(nome);
+        categoria.setDescricao(descricao(request));
+        categoria.setOrdem(categoriaRepository.proximaOrdem());
         if (request.status() != null) {
             categoria.setStatus(status(request.status()));
         }
@@ -60,6 +62,7 @@ public class CategoriaService {
             throw new DataIntegrityViolationException("Já existe uma categoria chamada " + nome);
         }
         categoria.setNome(nome);
+        categoria.setDescricao(descricao(request));
         if (request.status() != null) {
             categoria.setStatus(status(request.status()));
         }
@@ -88,6 +91,10 @@ public class CategoriaService {
     private Categoria buscar(Long id) {
         return categoriaRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Categoria não encontrada: " + id));
+    }
+
+    private static String descricao(CategoriaRequest request) {
+        return request.description() == null || request.description().isBlank() ? null : request.description().trim();
     }
 
     private static StatusCategoria status(String status) {

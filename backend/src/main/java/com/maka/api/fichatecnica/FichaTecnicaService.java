@@ -1,5 +1,6 @@
 package com.maka.api.fichatecnica;
 
+import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Collection;
 import java.util.HashMap;
@@ -19,6 +20,7 @@ import com.maka.api.fichatecnica.CustoPratoService.ItemFicha;
 import com.maka.api.fichatecnica.dto.FaixaJson;
 import com.maka.api.fichatecnica.dto.FichaTecnicaRequest;
 import com.maka.api.fichatecnica.dto.FichaTecnicaResponse;
+import com.maka.api.model.FichaTecnica;
 import com.maka.api.model.FichaTecnicaItem;
 import com.maka.api.model.Ingrediente;
 import com.maka.api.model.Produto;
@@ -50,10 +52,12 @@ public class FichaTecnicaService {
         this.custoPratoService = custoPratoService;
     }
 
+    // Prato sem ficha devolve uma ficha vazia (rendimento 1), pronta para ser montada
     @Transactional(readOnly = true)
     public FichaTecnicaResponse buscar(Long produtoId) {
         Produto produto = buscarProduto(produtoId);
-        return montarResposta(produto, fichaTecnicaRepository.findByProdutoIdOrderById(produtoId));
+        FichaTecnica ficha = fichaTecnicaRepository.findByProdutoId(produtoId).orElseGet(() -> nova(produto));
+        return montarResposta(produto, ficha);
     }
 
     @Transactional
@@ -61,65 +65,85 @@ public class FichaTecnicaService {
         Produto produto = buscarProduto(produtoId);
         Map<Long, Ingrediente> ingredientes = carregarIngredientes(request.items());
 
-        // Valida tudo (RN08, quantidade) antes de apagar a ficha antiga
-        request.items().forEach(item -> custoPratoService.custoItem(new ItemFicha(
-                item.quantity(), ingredientes.get(item.ingredientId()).getCustoUnitario(), item.correctionFactor())));
-
-        fichaTecnicaRepository.apagarDoProduto(produtoId);
-        List<FichaTecnicaItem> itens = request.items().stream().map(item -> {
+        // Valida tudo (unidade, RN08, quantidade) antes de mexer na ficha
+        List<FichaTecnicaItem> novos = request.items().stream().map(item -> {
             FichaTecnicaItem novo = new FichaTecnicaItem();
-            novo.setProduto(produto);
             novo.setIngrediente(ingredientes.get(item.ingredientId()));
             novo.setQuantidade(item.quantity());
+            novo.setUnidade(Unidades.normalizar(item.unit()));
             novo.setFatorCorrecao(item.correctionFactor());
+            custoPratoService.custoItem(paraItemFicha(novo));
             return novo;
         }).toList();
-        fichaTecnicaRepository.saveAll(itens);
 
-        // RN01: prato sem ficha não pode continuar ativo
-        if (itens.isEmpty() && produto.getStatus() == StatusPrato.ATIVO) {
+        FichaTecnica ficha = fichaTecnicaRepository.findByProdutoId(produtoId).orElseGet(() -> nova(produto));
+        ficha.setRendimento(request.servings() == null ? 1 : request.servings());
+        ficha.setModoPreparo(request.preparationMethod() == null || request.preparationMethod().isBlank()
+                ? null : request.preparationMethod().trim());
+        ficha.getItens().clear();
+        novos.forEach(item -> {
+            item.setFichaTecnica(ficha);
+            ficha.getItens().add(item);
+        });
+        fichaTecnicaRepository.save(ficha);
+
+        // RN01: prato sem ingredientes na ficha não pode continuar ativo
+        if (novos.isEmpty() && produto.getStatus() == StatusPrato.ATIVO) {
             produto.setStatus(StatusPrato.PAUSADO);
         }
-        return montarResposta(produto, itens);
+        return montarResposta(produto, ficha);
     }
 
-    // Custo de vários pratos com uma consulta só. Prato sem ficha não entra no mapa.
+    // Custo de vários pratos com uma consulta só. Prato sem ingredientes na ficha não entra no mapa.
     @Transactional(readOnly = true)
     public Map<Long, CustoPrato> custosPorProduto(Collection<Produto> produtos) {
         if (produtos.isEmpty()) {
             return Map.of();
         }
-        Map<Long, Produto> porId = produtos.stream().collect(Collectors.toMap(Produto::getId, Function.identity()));
-        Map<Long, List<ItemFicha>> itensPorProduto = fichaTecnicaRepository.findByProdutoIdIn(porId.keySet()).stream()
-                .collect(Collectors.groupingBy(
-                        item -> item.getProduto().getId(),
-                        Collectors.mapping(FichaTecnicaService::paraItemFicha, Collectors.toList())));
-
+        Set<Long> ids = produtos.stream().map(Produto::getId).collect(Collectors.toSet());
         Map<Long, CustoPrato> custos = new HashMap<>();
-        itensPorProduto.forEach((id, itens) ->
-                custos.put(id, custoPratoService.calcular(itens, porId.get(id).getPreco())));
+        for (FichaTecnica ficha : fichaTecnicaRepository.findByProdutoIdIn(ids)) {
+            if (!ficha.getItens().isEmpty()) {
+                custos.put(ficha.getProduto().getId(), calcular(ficha));
+            }
+        }
         return custos;
     }
 
-    private FichaTecnicaResponse montarResposta(Produto produto, List<FichaTecnicaItem> itens) {
-        List<FichaTecnicaResponse.Item> linhas = itens.stream().map(item -> new FichaTecnicaResponse.Item(
+    // Usado pelo ProdutoService para a RN01
+    public boolean temFicha(Long produtoId) {
+        return fichaTecnicaRepository.existsByProdutoIdAndItensIsNotEmpty(produtoId);
+    }
+
+    private CustoPrato calcular(FichaTecnica ficha) {
+        List<ItemFicha> itens = ficha.getItens().stream().map(FichaTecnicaService::paraItemFicha).toList();
+        return custoPratoService.calcular(itens, ficha.getProduto().getPreco(), ficha.getRendimento());
+    }
+
+    private FichaTecnicaResponse montarResposta(Produto produto, FichaTecnica ficha) {
+        List<FichaTecnicaResponse.Item> linhas = ficha.getItens().stream().map(item -> new FichaTecnicaResponse.Item(
                 item.getIngrediente().getId(),
                 item.getIngrediente().getNome(),
+                item.getQuantidade(),
+                item.getUnidade(),
+                item.getFatorCorrecao(),
                 item.getIngrediente().getUnidadeMedida(),
                 item.getIngrediente().getCustoUnitario(),
-                item.getQuantidade(),
-                item.getFatorCorrecao(),
                 custoPratoService.custoItem(paraItemFicha(item)).setScale(2, RoundingMode.HALF_UP))).toList();
 
-        CustoPrato custo = itens.isEmpty()
-                ? null
-                : custoPratoService.calcular(itens.stream().map(FichaTecnicaService::paraItemFicha).toList(), produto.getPreco());
+        CustoPrato custo = ficha.getItens().isEmpty() ? null : calcular(ficha);
+        BigDecimal custoReceita = linhas.stream()
+                .map(FichaTecnicaResponse.Item::cost)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         return new FichaTecnicaResponse(
                 String.valueOf(produto.getId()),
                 produto.getNome(),
                 produto.getPreco(),
                 StatusPratoJson.toJson(produto.getStatus()),
+                ficha.getRendimento(),
+                ficha.getModoPreparo(),
                 linhas,
+                custo == null ? null : custoReceita,
                 custo == null ? null : custo.custo(),
                 custo == null ? null : custo.foodCost(),
                 custo == null ? null : FaixaJson.toJson(custo.faixa()),
@@ -149,12 +173,16 @@ public class FichaTecnicaService {
                 .orElseThrow(() -> new NoSuchElementException("Prato não encontrado: " + id));
     }
 
-    private static ItemFicha paraItemFicha(FichaTecnicaItem item) {
-        return new ItemFicha(item.getQuantidade(), item.getIngrediente().getCustoUnitario(), item.getFatorCorrecao());
+    private static FichaTecnica nova(Produto produto) {
+        FichaTecnica ficha = new FichaTecnica();
+        ficha.setProduto(produto);
+        return ficha;
     }
 
-    // Usado pelo ProdutoService para a RN01
-    public boolean temFicha(Long produtoId) {
-        return fichaTecnicaRepository.existsByProdutoId(produtoId);
+    // Converte a quantidade para a unidade do ingrediente antes de multiplicar pelo custo
+    private static ItemFicha paraItemFicha(FichaTecnicaItem item) {
+        BigDecimal quantidade = Unidades.converter(
+                item.getQuantidade(), item.getUnidade(), item.getIngrediente().getUnidadeMedida());
+        return new ItemFicha(quantidade, item.getIngrediente().getCustoUnitario(), item.getFatorCorrecao());
     }
 }

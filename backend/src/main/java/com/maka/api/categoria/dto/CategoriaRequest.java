@@ -7,5 +7,6 @@ import jakarta.validation.constraints.Size;
 // status é opcional: sem ele, a categoria nova nasce ativa e a editada mantém o status
 public record CategoriaRequest(
         @NotBlank @Size(max = 60) String name,
+        @Size(max = 255) String description,
         @Pattern(regexp = "active|inactive", message = "use active ou inactive") String status) {
 }

@@ -1,5 +1,4 @@
-CREATE DATABASE IF NOT EXISTS maka CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE maka;
+-- V1: schema inicial do MAKA (o banco 'maka' já é criado pelo docker-compose).
 
 CREATE TABLE IF NOT EXISTS usuario (
   id          BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -25,27 +24,18 @@ CREATE TABLE IF NOT EXISTS funcionario (
   FOREIGN KEY (usuario_id) REFERENCES usuario(id)
 );
 
-CREATE TABLE IF NOT EXISTS categoria (
-  id      BIGINT AUTO_INCREMENT PRIMARY KEY,
-  nome    VARCHAR(60) NOT NULL UNIQUE,
-  status  ENUM('ATIVO','INATIVO') NOT NULL DEFAULT 'ATIVO'
-);
-
--- status: RN01 (só fica ATIVO com ficha técnica) e RN06 (exclusão lógica = INATIVO)
 CREATE TABLE IF NOT EXISTS produto (
   id             BIGINT AUTO_INCREMENT PRIMARY KEY,
   nome           VARCHAR(120) NOT NULL,
   descricao      TEXT,
   preco          DECIMAL(10,2) NOT NULL,
-  categoria_id   BIGINT NOT NULL,
+  categoria      VARCHAR(60) NOT NULL,
   imagem         VARCHAR(500),
   destaque       BOOLEAN DEFAULT FALSE,
-  status         ENUM('ATIVO','INATIVO','PAUSADO') NOT NULL DEFAULT 'PAUSADO',
+  ativo          BOOLEAN DEFAULT TRUE,
   tempo_preparo  INT,
   calorias       INT,
-  modo_preparo   TEXT,
-  criado_em      DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (categoria_id) REFERENCES categoria(id)
+  criado_em      DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS produto_tag (
@@ -60,19 +50,6 @@ CREATE TABLE IF NOT EXISTS ingrediente (
   nome            VARCHAR(100) NOT NULL,
   unidade_medida  VARCHAR(20) NOT NULL,
   custo_unitario  DECIMAL(12,4) NOT NULL
-);
-
--- Ficha técnica: ingredientes de cada prato. quantidade na unidade_medida do ingrediente;
--- fator_correcao >= 1,0 (RN08, validado no Service)
-CREATE TABLE IF NOT EXISTS ficha_tecnica (
-  id              BIGINT AUTO_INCREMENT PRIMARY KEY,
-  produto_id      BIGINT NOT NULL,
-  ingrediente_id  BIGINT NOT NULL,
-  quantidade      DECIMAL(12,4) NOT NULL,
-  fator_correcao  DECIMAL(6,3) NOT NULL DEFAULT 1.000,
-  UNIQUE (produto_id, ingrediente_id),
-  FOREIGN KEY (produto_id) REFERENCES produto(id),
-  FOREIGN KEY (ingrediente_id) REFERENCES ingrediente(id)
 );
 
 CREATE TABLE IF NOT EXISTS pedido (

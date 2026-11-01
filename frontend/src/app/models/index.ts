@@ -40,7 +40,6 @@ export interface MenuItem {
   tags?: string[];       // 'vegano', 'sem-gluten', etc.
   createdAt?: Date;
   status?: DishStatus;          // banco: ATIVO, PAUSADO, INATIVO
-  preparationMethod?: string;   // modo de preparo (RF-014)
   // Só na gestão (/api/admin/pratos): custo da ficha técnica, null se não houver ficha
   hasTechnicalSheet?: boolean;
   cost?: number | null;
@@ -55,6 +54,8 @@ export type FoodCostLevel = 'green' | 'yellow' | 'red';
 export interface Category {
   id: string;
   name: string;
+  description?: string | null;
+  order?: number;                  // ordem das abas no cardápio
   status: 'active' | 'inactive';   // banco: ATIVO, INATIVO
 }
 
@@ -74,14 +75,16 @@ export interface Page<T> {
   totalPages: number;
 }
 
-// Ficha técnica (RF-011). quantity e unitCost na unidade do ingrediente
+// Ficha técnica (RF-011): cabeçalho (rendimento e modo de preparo) + itens.
+// quantity está em unit; unitCost é o custo por ingredientUnit (como o ingrediente é cadastrado)
 export interface TechnicalSheetItem {
   ingredientId: number;
   ingredientName: string;
-  unit: string;
-  unitCost: number;
   quantity: number;
+  unit: string;              // g, kg, ml, L ou un
   correctionFactor: number;
+  ingredientUnit: string;
+  unitCost: number;
   cost: number;
 }
 
@@ -90,8 +93,11 @@ export interface TechnicalSheet {
   dishName: string;
   price: number;
   status: DishStatus;
+  servings: number;              // rendimento: quantas porções a receita rende
+  preparationMethod: string | null;  // modo de preparo (RF-014)
   items: TechnicalSheetItem[];
-  cost: number | null;
+  batchCost: number | null;      // custo da receita inteira
+  cost: number | null;           // custo da porção (batchCost / servings)
   foodCost: number | null;
   foodCostLevel: FoodCostLevel | null;
   foodCostWarning: boolean;

@@ -14,9 +14,9 @@ export interface AdminDishFilters {
 }
 
 export interface TechnicalSheetInput {
-  ingredientId: number;
-  quantity: number;
-  correctionFactor: number;
+  servings: number;
+  preparationMethod: string;
+  items: { ingredientId: number; quantity: number; unit: string; correctionFactor: number }[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -105,8 +105,8 @@ export class MenuService {
     return this.read(this.http.get<TechnicalSheet>(`${this.adminDishes}/${dishId}/ficha-tecnica`));
   }
 
-  saveTechnicalSheet(dishId: string, items: TechnicalSheetInput[]): Promise<TechnicalSheet> {
-    return this.write(this.http.put<TechnicalSheet>(`${this.adminDishes}/${dishId}/ficha-tecnica`, { items }));
+  saveTechnicalSheet(dishId: string, sheet: TechnicalSheetInput): Promise<TechnicalSheet> {
+    return this.write(this.http.put<TechnicalSheet>(`${this.adminDishes}/${dishId}/ficha-tecnica`, sheet));
   }
 
   // ── Categorias ──────────────────────────────────────────────
