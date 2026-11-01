@@ -58,8 +58,8 @@ const EMPTY_FORM: MenuForm = {
           <input class="form-input" type="text" placeholder="Buscar item..." [ngModel]="search()" (ngModelChange)="search.set($event)">
         </div>
 
-        <!-- Category filter -->
-        <div class="cat-nav dark-pills" style="flex:1;min-width:0">
+        <!-- Category filter: width:0 impede as pílulas de alargar a página no tablet (RNF09) -->
+        <div class="cat-nav dark-pills" style="flex:1 1 260px;width:0;min-width:0">
           <button class="cat-pill" [class.active]="!activeCategory()" (click)="activeCategory.set('')">
             Todos ({{ allItems().length }})
           </button>
@@ -300,8 +300,8 @@ const EMPTY_FORM: MenuForm = {
 })
 export class MenuManagementComponent {
   // Totalmente reativo: lê diretamente dos signals do service — zero polling, zero memory leak
-  readonly allItems = computed(() => this.menuService.items$());
-  readonly loading  = computed(() => !this.menuService.loaded$());
+  readonly allItems = computed(() => this.menuService.adminItems$());
+  readonly loading  = computed(() => !this.menuService.adminLoaded$());
 
   showModal    = signal(false);
   saving       = signal(false);
@@ -319,10 +319,12 @@ export class MenuManagementComponent {
   constructor(
     private menuService: MenuService,
     private toast: ToastService
-  ) {}
+  ) {
+    this.menuService.loadAdmin();
+  }
 
   filteredItems = computed(() => {
-    let items = this.menuService.items$();
+    let items = this.allItems();
     if (!this.showInactive()) {
       items = items.filter(i => i.active !== false);
     }
@@ -408,8 +410,8 @@ export class MenuManagementComponent {
         this.toast.show('Item adicionado ao cardápio!');
       }
       this.closeModal();
-    } catch {
-      this.formError = 'Erro ao salvar. Verifique a conexão e tente novamente.';
+    } catch (e) {
+      this.formError = e instanceof Error ? e.message : 'Erro ao salvar. Verifique a conexão e tente novamente.';
     } finally {
       this.saving.set(false);
     }
@@ -417,8 +419,12 @@ export class MenuManagementComponent {
 
   async toggleActive(item: MenuItem) {
     const newActive = item.active === false ? true : false;
-    await this.menuService.toggleItem(item.id, newActive);
-    this.toast.show(newActive ? `"${item.name}" ativado` : `"${item.name}" pausado`);
+    try {
+      await this.menuService.toggleItem(item.id, newActive);
+      this.toast.show(newActive ? `"${item.name}" ativado` : `"${item.name}" pausado`);
+    } catch (e) {
+      this.toast.show(e instanceof Error ? e.message : 'Erro ao atualizar o item.', 'error');
+    }
   }
 
   confirmDelete(item: MenuItem) {
@@ -428,8 +434,13 @@ export class MenuManagementComponent {
   async deleteItem() {
     const target = this.deleteTarget();
     if (!target) return;
-    await this.menuService.deleteItem(target.id);
-    this.toast.show(`"${target.name}" removido do cardápio`);
-    this.deleteTarget.set(null);
+    try {
+      await this.menuService.deleteItem(target.id);
+      this.toast.show(`"${target.name}" removido do cardápio`);
+    } catch (e) {
+      this.toast.show(e instanceof Error ? e.message : 'Erro ao remover o item.', 'error');
+    } finally {
+      this.deleteTarget.set(null);
+    }
   }
 }

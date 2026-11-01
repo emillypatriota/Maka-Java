@@ -1,6 +1,8 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { Observable, firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { errorMessage } from '../core/http-error';
 
 export type StaffRole = 'manager' | 'kitchen' | 'delivery' | 'cashier' | 'waiter';
 export type StaffStatus = 'active' | 'inactive' | 'on_leave';
@@ -18,11 +20,10 @@ export interface StaffMember {
   createdAt?: any;
 }
 
-// Mensagem mostrada no toast enquanto a escrita não existe no backend
-const NOT_AVAILABLE = 'Disponível na próxima versão';
-
 @Injectable({ providedIn: 'root' })
 export class StaffService {
+  private readonly adminEndpoint = `${environment.apiUrl}/admin/funcionarios`;
+
   private _staff  = signal<StaffMember[]>([]);
   private _loaded = signal(false);
 
@@ -44,20 +45,35 @@ export class StaffService {
     });
   }
 
-  // TODO (Sprint 2 – Gestão): POST /api/funcionarios e recarregar a lista
   async addMember(member: Omit<StaffMember, 'id'>): Promise<void> {
-    throw new Error(NOT_AVAILABLE);
+    await this.write(this.http.post(this.adminEndpoint, toPayload(member)));
   }
-  // TODO (Sprint 2 – Gestão): PUT /api/funcionarios/{id} e recarregar a lista
+
   async updateMember(id: string, data: Omit<StaffMember, 'id'>): Promise<void> {
-    throw new Error(NOT_AVAILABLE);
+    await this.write(this.http.put(`${this.adminEndpoint}/${id}`, toPayload(data)));
   }
-  // TODO (Sprint 2 – Gestão): PATCH /api/funcionarios/{id}/status e recarregar a lista
+
   async setStatus(id: string, status: StaffStatus): Promise<void> {
-    throw new Error(NOT_AVAILABLE);
+    await this.write(this.http.patch(`${this.adminEndpoint}/${id}/status`, { status }));
   }
-  // TODO (Sprint 2 – Gestão): DELETE /api/funcionarios/{id} e recarregar a lista
+
+  // Exclusão lógica: o funcionário fica inativo, mas continua no banco
   async removeMember(id: string): Promise<void> {
-    throw new Error(NOT_AVAILABLE);
+    await this.write(this.http.delete(`${this.adminEndpoint}/${id}`));
   }
+
+  // Envia a escrita, recarrega a lista e devolve a mensagem do backend em caso de erro
+  private async write(request: Observable<unknown>): Promise<void> {
+    try {
+      await firstValueFrom(request);
+    } catch (e) {
+      throw new Error(errorMessage(e, 'Erro ao salvar. Tente novamente.'));
+    }
+    this.load();
+  }
+}
+
+// O input date devolve '' quando vazio; o backend espera null
+function toPayload(member: Omit<StaffMember, 'id'>) {
+  return { ...member, hireDate: member.hireDate || null };
 }
