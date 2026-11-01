@@ -39,6 +39,68 @@ export interface MenuItem {
   calories?: number;
   tags?: string[];       // 'vegano', 'sem-gluten', etc.
   createdAt?: Date;
+  status?: DishStatus;          // banco: ATIVO, PAUSADO, INATIVO
+  // Só na gestão (/api/admin/pratos): custo da ficha técnica, null se não houver ficha
+  hasTechnicalSheet?: boolean;
+  cost?: number | null;
+  foodCost?: number | null;     // % do preço
+  foodCostLevel?: FoodCostLevel | null;
+  foodCostWarning?: boolean | null;  // RN02: food cost acima de 35%
+}
+
+export type DishStatus = 'active' | 'paused' | 'inactive';
+export type FoodCostLevel = 'green' | 'yellow' | 'red';
+
+export interface Category {
+  id: string;
+  name: string;
+  description?: string | null;
+  order?: number;                  // ordem das abas no cardápio
+  status: 'active' | 'inactive';   // banco: ATIVO, INATIVO
+}
+
+export interface MenuSummary {
+  total: number;
+  active: number;
+  paused: number;
+  inactive: number;
+}
+
+// Resposta paginada do Spring (Page<T>)
+export interface Page<T> {
+  content: T[];
+  number: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+// Ficha técnica (RF-011): cabeçalho (rendimento e modo de preparo) + itens.
+// quantity está em unit; unitCost é o custo por ingredientUnit (como o ingrediente é cadastrado)
+export interface TechnicalSheetItem {
+  ingredientId: number;
+  ingredientName: string;
+  quantity: number;
+  unit: string;              // g, kg, ml, L ou un
+  correctionFactor: number;
+  ingredientUnit: string;
+  unitCost: number;
+  cost: number;
+}
+
+export interface TechnicalSheet {
+  dishId: string;
+  dishName: string;
+  price: number;
+  status: DishStatus;
+  servings: number;              // rendimento: quantas porções a receita rende
+  preparationMethod: string | null;  // modo de preparo (RF-014)
+  items: TechnicalSheetItem[];
+  batchCost: number | null;      // custo da receita inteira
+  cost: number | null;           // custo da porção (batchCost / servings)
+  foodCost: number | null;
+  foodCostLevel: FoodCostLevel | null;
+  foodCostWarning: boolean;
 }
 
 export interface CartItem extends MenuItem {

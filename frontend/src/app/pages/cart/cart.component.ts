@@ -13,6 +13,15 @@ import { combineLatest, map } from 'rxjs';
     <div style="padding:2.5rem 0 4rem;background:var(--stone-50);min-height:60vh">
       <div class="container">
 
+        <!-- Pratos que saíram do cardápio depois de irem para o carrinho -->
+        <div *ngIf="removed().length" role="status" class="cart-removed">
+          <span>
+            {{ removed().length === 1 ? 'Este item não está mais disponível e saiu do seu carrinho:' : 'Estes itens não estão mais disponíveis e saíram do seu carrinho:' }}
+            <strong>{{ removed().join(', ') }}</strong>
+          </span>
+          <button type="button" class="btn btn-ghost btn-sm" (click)="cart.dismissRemoved()">Entendi</button>
+        </div>
+
         <div *ngIf="(items$ | async)?.length === 0" style="display:flex;justify-content:center;padding:5rem 0">
           <div style="text-align:center;max-width:360px">
             <div style="width:6rem;height:6rem;border-radius:50%;background:var(--stone-100);display:flex;align-items:center;justify-content:center;font-size:2.5rem;margin:0 auto 1.5rem">🛒</div>
@@ -107,15 +116,19 @@ import { combineLatest, map } from 'rxjs';
       </div>
     </div>
   `,
-  styles: [`@media(max-width:900px){.cart-grid{grid-template-columns:1fr !important}}`]
+  styles: [`
+    @media(max-width:900px){.cart-grid{grid-template-columns:1fr !important}}
+    .cart-removed { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem; padding:.875rem 1rem; border-radius:var(--r-lg); background:#fffbeb; border:1.5px solid #fcd34d; color:#92400e; font-size:.9rem; }
+  `]
 })
 export class CartComponent {
   Math = Math;
   items$ = this.cart.items;
+  removed = this.cart.removed$;
   vm$ = combineLatest([this.cart.items, this.cart.total]).pipe(
     map(([_, subtotal]) => ({ subtotal, deliveryFee: subtotal>=150?0:15, total: subtotal+(subtotal>=150?0:15) }))
   );
-  constructor(private cart: CartService) {}
+  constructor(public cart: CartService) {}
   updateQty(item: CartItem, qty: number) { this.cart.updateQuantity(item.id, qty); }
   remove(id: string) { this.cart.removeItem(id); }
 }
