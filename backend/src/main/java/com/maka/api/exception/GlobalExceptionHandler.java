@@ -1,4 +1,4 @@
-package com.maka.api.common;
+package com.maka.api.exception;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -70,6 +70,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NoSuchElementException.class)
     public ResponseEntity<ErroResponse> naoEncontrado(NoSuchElementException ex) {
         return montar(HttpStatus.NOT_FOUND, texto(ex, "Recurso não encontrado"), null);
+    }
+
+    // 409: conflito com algo que já existe (e-mail, CNPJ, SKU repetidos)
+    @ExceptionHandler(ConflitoException.class)
+    public ResponseEntity<ErroResponse> conflitoDeNegocio(ConflitoException ex) {
+        return montar(HttpStatus.CONFLICT, texto(ex, "Conflito com dados já existentes"), null);
+    }
+
+    // 422: dados válidos, mas que quebram uma regra de negócio (RN01..RN10)
+    @ExceptionHandler(RegraNegocioException.class)
+    public ResponseEntity<ErroResponse> regraDeNegocio(RegraNegocioException ex) {
+        return montar(HttpStatus.UNPROCESSABLE_ENTITY, texto(ex, "Regra de negócio violada"), null);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
