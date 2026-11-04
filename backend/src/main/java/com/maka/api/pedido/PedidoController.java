@@ -4,14 +4,12 @@ import com.maka.api.model.StatusPedido;
 import com.maka.api.pedido.dto.PedidoRequestDTO;
 import com.maka.api.pedido.dto.PedidoResponseDTO;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -19,28 +17,33 @@ import java.util.Map;
 @RequestMapping("/api")
 public class PedidoController {
 
+    private final PedidoService pedidoService;
+
+    // Injeção de dependência explícita (evitando Lombok para não quebrar no VS Code)
+    public PedidoController(PedidoService pedidoService) {
+        this.pedidoService = pedidoService;
+    }
+
     // (P1) POST /api/pedidos (cliente logado cria o pedido)
     @PostMapping("/pedidos")
     public ResponseEntity<PedidoResponseDTO> criarPedido(@RequestBody @Valid PedidoRequestDTO request) {
-        // TODO: Implementar lógica no PedidoService (@Transactional, cálculo no servidor, baixa de estoque)
-        // Por enquanto, retorna um esqueleto vazio para o front não quebrar
-        PedidoResponseDTO response = new PedidoResponseDTO();
-        response.setId("0"); // Retornando string como o front espera
+        PedidoResponseDTO response = pedidoService.criarPedido(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     // (P1) GET /api/pedidos/meus (histórico de pedidos do cliente logado)
     @GetMapping("/pedidos/meus")
     public ResponseEntity<List<PedidoResponseDTO>> listarMeusPedidos() {
-        // TODO: Chamar o PedidoService buscando pelo cliente logado
-        return ResponseEntity.ok(new ArrayList<>());
+        // Temporário: Como a Auth ainda mantém a rota com permitAll(), mockamos o e-mail
+        // para não quebrar o teste do Front-end até a segurança estar 100% ativada.
+        String emailMock = "cliente@teste.com"; 
+        return ResponseEntity.ok(pedidoService.listarMeusPedidos(emailMock));
     }
 
     // (P1) GET /api/pedidos/{id}/status (cliente acompanha status)
     @GetMapping("/pedidos/{id}/status")
-    public ResponseEntity<Map<String, String>> buscarStatusPedido(@PathVariable Long id) {
-        // TODO: Retornar status atual
-        return ResponseEntity.ok(Map.of("status", StatusPedido.pending.name()));
+    public ResponseEntity> buscarStatusPedido(@PathVariable Long id) {
+        return ResponseEntity.ok(pedidoService.buscarStatusPedido(id));
     }
 
     // (P1) GET /api/admin/pedidos (painel da cozinha/gerência, com filtros e paginação)
@@ -48,8 +51,7 @@ public class PedidoController {
     public ResponseEntity<Page<PedidoResponseDTO>> listarPedidosAdmin(
             @RequestParam(required = false) StatusPedido status,
             Pageable pageable) {
-        // TODO: Implementar filtros e paginação real no PedidoService
-        return ResponseEntity.ok(new PageImpl<>(new ArrayList<>()));
+        return ResponseEntity.ok(pedidoService.listarPedidosAdmin(status, pageable));
     }
 
     // (P1) PATCH /api/admin/pedidos/{id}/status (funcionários atualizam o status)
@@ -59,16 +61,13 @@ public class PedidoController {
             @RequestBody Map<String, String> body) {
         
         String novoStatus = body.get("status");
-        // TODO: Validar transição (se inválido, jogar exceção que o Handler pegará como 409 Conflict)
-        
-        PedidoResponseDTO response = new PedidoResponseDTO();
-        response.setId(String.valueOf(id));
+        PedidoResponseDTO response = pedidoService.atualizarStatus(id, novoStatus);
         return ResponseEntity.ok(response);
     }
     
     // (Extra) GET /api/pedidos (endpoint antigo para os painéis, mantendo compatibilidade)
     @GetMapping("/pedidos")
     public ResponseEntity<List<PedidoResponseDTO>> listarPedidosAntigo() {
-        return ResponseEntity.ok(new ArrayList<>());
+        return ResponseEntity.ok(pedidoService.listarMeusPedidos(null));
     }
 }
