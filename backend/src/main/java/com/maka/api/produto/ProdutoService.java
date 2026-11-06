@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.maka.api.categoria.CategoriaService;
+import com.maka.api.exception.RegraNegocioException;
 import com.maka.api.fichatecnica.CustoPratoService.CustoPrato;
 import com.maka.api.fichatecnica.FichaTecnicaService;
 import com.maka.api.model.Produto;
@@ -106,10 +107,10 @@ public class ProdutoService {
         StatusPrato status = StatusPratoJson.fromJson(statusJson);
         if (status == StatusPrato.ATIVO) {
             if (!fichaTecnicaService.temFicha(id)) {
-                throw new IllegalArgumentException("Monte a ficha técnica antes de ativar o prato (RN01)");
+                throw new RegraNegocioException("Monte a ficha técnica antes de ativar o prato (RN01)");
             }
             if (produto.getCategoria().getStatus() != StatusCategoria.ATIVO) {
-                throw new IllegalArgumentException(
+                throw new RegraNegocioException(
                         "A categoria " + produto.getCategoria().getNome() + " está inativa: reative-a antes do prato");
             }
         }

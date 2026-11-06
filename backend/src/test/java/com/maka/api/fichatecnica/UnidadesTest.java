@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 
+import com.maka.api.exception.RegraNegocioException;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -19,8 +21,8 @@ class UnidadesTest {
 
     @Test
     void naoConverteEntreTiposDiferentes() {
-        assertThrows(IllegalArgumentException.class, () -> Unidades.converter(BigDecimal.ONE, "g", "ml"));
-        assertThrows(IllegalArgumentException.class, () -> Unidades.converter(BigDecimal.ONE, "un", "kg"));
+        assertThrows(RegraNegocioException.class, () -> Unidades.converter(BigDecimal.ONE, "g", "ml"));
+        assertThrows(RegraNegocioException.class, () -> Unidades.converter(BigDecimal.ONE, "un", "kg"));
     }
 
     @Test

@@ -3,7 +3,6 @@ package com.maka.api.categoria;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -12,6 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.maka.api.categoria.dto.CategoriaRequest;
 import com.maka.api.categoria.dto.CategoriaResponse;
+import com.maka.api.exception.ConflitoException;
+import com.maka.api.exception.RegraNegocioException;
 import com.maka.api.model.Categoria;
 import com.maka.api.model.StatusCategoria;
 import com.maka.api.repository.CategoriaRepository;
@@ -42,7 +43,7 @@ public class CategoriaService {
     public CategoriaResponse criar(CategoriaRequest request) {
         String nome = request.name().trim();
         if (categoriaRepository.existsByNomeIgnoreCase(nome)) {
-            throw new DataIntegrityViolationException("Já existe uma categoria chamada " + nome);
+            throw new ConflitoException("Já existe uma categoria chamada " + nome);
         }
         Categoria categoria = new Categoria();
         categoria.setNome(nome);
@@ -59,7 +60,7 @@ public class CategoriaService {
         Categoria categoria = buscar(id);
         String nome = request.name().trim();
         if (categoriaRepository.existsByNomeIgnoreCaseAndIdNot(nome, id)) {
-            throw new DataIntegrityViolationException("Já existe uma categoria chamada " + nome);
+            throw new ConflitoException("Já existe uma categoria chamada " + nome);
         }
         categoria.setNome(nome);
         categoria.setDescricao(descricao(request));
@@ -83,7 +84,7 @@ public class CategoriaService {
         Categoria categoria = categoriaRepository.findByNomeIgnoreCase(nome.trim())
                 .orElseThrow(() -> new IllegalArgumentException("Categoria não encontrada: " + nome));
         if (categoria.getStatus() != StatusCategoria.ATIVO) {
-            throw new IllegalArgumentException("A categoria " + categoria.getNome() + " está inativa");
+            throw new RegraNegocioException("A categoria " + categoria.getNome() + " está inativa");
         }
         return categoria;
     }
