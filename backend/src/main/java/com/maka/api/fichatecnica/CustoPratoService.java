@@ -6,6 +6,8 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.maka.api.exception.RegraNegocioException;
+
 // Regras de custo da ficha técnica (RF-012, RF-013, RN02, RN08).
 // Não acessa o banco: recebe os itens já montados, para poder ser usado
 // pela ficha técnica e pelo recálculo quando o custo de um ingrediente muda.
@@ -34,7 +36,7 @@ public class CustoPratoService {
 
     public void validarFator(BigDecimal fatorCorrecao) {
         if (fatorCorrecao == null || fatorCorrecao.compareTo(FATOR_MINIMO) < 0) {
-            throw new IllegalArgumentException("O fator de correção deve ser maior ou igual a 1,0");
+            throw new RegraNegocioException("O fator de correção deve ser maior ou igual a 1,0");
         }
     }
 

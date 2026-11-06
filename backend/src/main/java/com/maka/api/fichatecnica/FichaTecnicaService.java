@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.maka.api.exception.RegraNegocioException;
 import com.maka.api.fichatecnica.CustoPratoService.CustoPrato;
 import com.maka.api.fichatecnica.CustoPratoService.ItemFicha;
 import com.maka.api.fichatecnica.dto.FaixaJson;
@@ -154,7 +155,7 @@ public class FichaTecnicaService {
         Set<Long> ids = new HashSet<>();
         for (FichaTecnicaRequest.Item item : itens) {
             if (!ids.add(item.ingredientId())) {
-                throw new IllegalArgumentException("Ingrediente repetido na ficha técnica: " + item.ingredientId());
+                throw new RegraNegocioException("Ingrediente repetido na ficha técnica: " + item.ingredientId());
             }
         }
         Map<Long, Ingrediente> encontrados = ingredienteRepository.findAllById(ids).stream()

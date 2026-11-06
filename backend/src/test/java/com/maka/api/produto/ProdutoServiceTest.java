@@ -1,6 +1,7 @@
 package com.maka.api.produto;
 
 import com.maka.api.categoria.CategoriaService;
+import com.maka.api.exception.RegraNegocioException;
 import com.maka.api.fichatecnica.FichaTecnicaService;
 import com.maka.api.model.Categoria;
 import com.maka.api.model.Produto;
@@ -52,7 +53,7 @@ class ProdutoServiceTest {
         when(produtoRepository.findWithCategoriaById(1L)).thenReturn(Optional.of(produto));
         when(fichaTecnicaService.temFicha(1L)).thenReturn(false);
 
-        IllegalArgumentException erro = assertThrows(IllegalArgumentException.class,
+        RegraNegocioException erro = assertThrows(RegraNegocioException.class,
                 () -> service.alterarStatus(1L, "active"));
 
         assertEquals("Monte a ficha técnica antes de ativar o prato (RN01)", erro.getMessage());
@@ -66,7 +67,7 @@ class ProdutoServiceTest {
         when(produtoRepository.findWithCategoriaById(1L)).thenReturn(Optional.of(produto));
         when(fichaTecnicaService.temFicha(1L)).thenReturn(true);
 
-        assertThrows(IllegalArgumentException.class, () -> service.alterarStatus(1L, "active"));
+        assertThrows(RegraNegocioException.class, () -> service.alterarStatus(1L, "active"));
         assertEquals(StatusPrato.PAUSADO, produto.getStatus());
     }
 
