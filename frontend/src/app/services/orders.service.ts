@@ -1,6 +1,6 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, timer } from 'rxjs';
+import { Observable, timer, of } from 'rxjs'; 
 import { switchMap, map, tap, shareReplay } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { Order } from '../models'; 
@@ -25,6 +25,15 @@ export class OrdersService {
     return this._orders();
   }
 
+  
+  getAdminPedidos(): Observable<Order[]> {
+    return of([
+      { id: '1', status: 'pending', createdAt: new Date().toISOString(), total: 45.0, canal: 'WEB', items: [{ name: 'X-Burger', quantity: 2 }] },
+      { id: '2', status: 'preparing', createdAt: new Date().toISOString(), total: 32.0, canal: 'APP', items: [{ name: 'Batata Frita', quantity: 1 }] },
+      { id: '3', status: 'ready', createdAt: new Date().toISOString(), total: 22.0, canal: 'BALCAO', items: [{ name: 'Salada', quantity: 1 }] }
+    ] as unknown as Order[]); 
+  }
+  
   async addOrder(orderData: any): Promise<Order> {
     const req = this.http.post<Order>(`${environment.apiUrl}/pedidos`, orderData);
     const res = await req.toPromise();

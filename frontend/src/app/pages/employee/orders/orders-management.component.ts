@@ -56,6 +56,7 @@ const NEXT_LABEL: Partial<Record<OrderStatus, string>> = {
         </div>
       </div>
 
+      <!-- BARRA DE BUSCA E NOVOS FILTROS -->
       <div style="display:flex;gap:.875rem;flex-wrap:wrap;margin-bottom:1.25rem">
         <div style="position:relative;flex:1;min-width:200px">
           <svg style="position:absolute;left:.875rem;top:50%;transform:translateY(-50%);color:var(--text-muted)" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -63,8 +64,26 @@ const NEXT_LABEL: Partial<Record<OrderStatus, string>> = {
             [value]="search()" (input)="search.set($any($event.target).value)"
             style="width:100%;padding:.625rem .875rem .625rem 2.375rem;background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-lg);color:var(--text-primary);font-size:.82rem;outline:none">
         </div>
+        
+        <!-- Filtro: Canal -->
+        <div style="min-width: 160px;">
+          <select [ngModel]="filtroCanal()" (ngModelChange)="filtroCanal.set($event)"
+            style="width:100%;padding:.625rem .875rem;background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-lg);color:var(--text-primary);font-size:.82rem;outline:none;cursor:pointer">
+            <option value="">Todos os Canais</option>
+            <option value="APP">Aplicativo (APP)</option>
+            <option value="WEB">Site (WEB)</option>
+            <option value="BALCAO">Balcão</option>
+          </select>
+        </div>
+
+        <!-- Filtro: Data -->
+        <div style="min-width: 160px;">
+          <input type="date" [ngModel]="filtroData()" (ngModelChange)="filtroData.set($event)"
+            style="width:100%;padding:.55rem .875rem;background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-lg);color:var(--text-primary);font-size:.82rem;outline:none;color-scheme:dark">
+        </div>
       </div>
 
+      <!-- Filtro: Status (Abas originais mantidas) -->
       <div style="display:flex;gap:.25rem;overflow-x:auto;margin-bottom:1.5rem;padding-bottom:.25rem;scrollbar-width:none">
         <button *ngFor="let tab of tabs"
           (click)="activeTab.set(tab.value)"
@@ -82,7 +101,7 @@ const NEXT_LABEL: Partial<Record<OrderStatus, string>> = {
 
       <div *ngIf="filtered().length === 0" style="text-align:center;padding:4rem 2rem;background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-2xl)">
         <div style="font-size:3rem;margin-bottom:1rem">📋</div>
-        <p style="color:var(--text-muted);font-size:.9rem">Nenhum pedido encontrado</p>
+        <p style="color:var(--text-muted);font-size:.9rem">Nenhum pedido encontrado com esses filtros</p>
       </div>
 
       <div style="display:flex;flex-direction:column;gap:1rem">
@@ -91,8 +110,9 @@ const NEXT_LABEL: Partial<Record<OrderStatus, string>> = {
           <div style="padding:1.25rem 1.375rem">
             <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:.75rem;margin-bottom:1rem">
               <div style="display:flex;align-items:center;gap:.875rem;flex-wrap:wrap">
-                <span style="font-family:monospace;font-size:.9rem;font-weight:700;color:var(--text-primary)">#{{ order.orderNumber }}</span>
+                <span style="font-family:monospace;font-size:.9rem;font-weight:700;color:var(--text-primary)">#{{ order.orderNumber || order.id }}</span>
                 <span class="status-pill" [style.background]="cfg(order.status).bg" [style.color]="cfg(order.status).color" [style.borderColor]="cfg(order.status).border">{{ cfg(order.status).label }}</span>
+                <span *ngIf="$any(order).canal" style="font-size:.7rem; padding:.15rem .4rem; border-radius:4px; background:rgba(255,255,255,0.05); border:1px solid var(--border); color:var(--text-muted);">{{ $any(order).canal }}</span>
                 <span style="font-size:.75rem;color:var(--text-muted)">{{ order.createdAt | date:'dd/MM HH:mm' }}</span>
               </div>
               <div style="text-align:right">
@@ -101,19 +121,20 @@ const NEXT_LABEL: Partial<Record<OrderStatus, string>> = {
               </div>
             </div>
 
-            <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.875rem;font-size:.82rem;color:var(--text-secondary)">
+            <!-- Omitindo cliente caso não exista no MOCK de forma limpa -->
+            <div *ngIf="order.customer" style="display:flex;align-items:center;gap:.5rem;margin-bottom:.875rem;font-size:.82rem;color:var(--text-secondary)">
               <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"/></svg><span>{{ order.customer.name }}</span><span style="color:var(--text-muted)">·</span><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.8 19.79 19.79 0 01.22 2.18 2 2 0 012.18 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.09a16 16 0 006 6l.46-.46a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/></svg><span>{{ order.customer.phone }}</span>
             </div>
 
             <div style="background:var(--surface-2,rgba(255,255,255,.03));border-radius:var(--r-lg);padding:.75rem 1rem;margin-bottom:1rem">
               <div *ngFor="let item of order.items" style="display:flex;align-items:center;gap:.625rem;padding:.3rem 0">
-                <img [src]="item.image" [alt]="item.name" style="width:2rem;height:2rem;border-radius:5px;object-fit:cover;flex-shrink:0" onerror="this.style.display='none'">
+                <img *ngIf="item.image" [src]="item.image" [alt]="item.name" style="width:2rem;height:2rem;border-radius:5px;object-fit:cover;flex-shrink:0" onerror="this.style.display='none'">
                 <span style="font-size:.82rem;color:var(--text-secondary);flex:1">{{ item.quantity }}× {{ item.name }}</span>
-                <span style="font-size:.8rem;font-weight:500;color:var(--text-primary)">R$ {{ (item.price*item.quantity).toFixed(2) }}</span>
+                <span *ngIf="item.price" style="font-size:.8rem;font-weight:500;color:var(--text-primary)">R$ {{ (item.price*item.quantity).toFixed(2) }}</span>
               </div>
             </div>
 
-            <div style="display:flex;gap:.5rem;align-items:flex-start;font-size:.78rem;color:var(--text-muted);margin-bottom:.875rem"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;margin-top:1px"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg><span>{{ order.customer.address }}</span></div>
+            <div *ngIf="order.customer?.address" style="display:flex;gap:.5rem;align-items:flex-start;font-size:.78rem;color:var(--text-muted);margin-bottom:.875rem"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;margin-top:1px"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg><span>{{ order.customer.address }}</span></div>
             
             <div *ngIf="order.estimatedTime" style="display:flex;gap:.5rem;align-items:center;font-size:.78rem;color:var(--text-muted);margin-bottom:.875rem"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span>Tempo Estimado: {{ order.estimatedTime }} min</span></div>
 
@@ -167,6 +188,11 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   tabs = TABS;
   activeTab = signal<OrderStatus | 'all'>('all');
   search = signal('');
+  
+  
+  filtroCanal = signal<string>('');
+  filtroData = signal<string>('');
+  
   updating: string | null = null;
   cancelingId: string | null = null;
   cancelReasonText = '';
@@ -181,7 +207,7 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
       const d = new Date(o.createdAt);
       return d.toDateString() === today.toDateString();
     });
-    const revenue = todayOrders.reduce((s, o) => s + o.total, 0);
+    const revenue = todayOrders.reduce((s, o) => s + (o.total || 0), 0);
     return [
       { label: 'HOJE',      value: todayOrders.length },
       { label: 'PENDENTES', value: orders.filter(o => o.status === 'pending').length },
@@ -193,13 +219,34 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
 
   filtered = computed(() => {
     let list = this.allOrders();
-    if (this.activeTab() !== 'all') list = list.filter(o => o.status === this.activeTab());
+    
+    // Filtro de Status (Abas Originais)
+    if (this.activeTab() !== 'all') {
+      list = list.filter(o => o.status === this.activeTab());
+    }
+    
+    
+    if (this.filtroCanal()) {
+    list = list.filter(o => ((o as any).canal || 'APP') === this.filtroCanal());
+  
+    }
+    
+    
+    if (this.filtroData()) {
+      list = list.filter(o => {
+        const dataPedido = new Date(o.createdAt).toISOString().split('T')[0];
+        return dataPedido === this.filtroData();
+      });
+    }
+
+   
     const q = this.search().toLowerCase().trim();
     if (q) list = list.filter(o =>
       o.orderNumber?.toLowerCase().includes(q) ||
       o.customer?.name?.toLowerCase().includes(q) ||
       o.customer?.phone?.includes(q)
     );
+    
     return list;
   });
 
@@ -209,7 +256,8 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    this.sub = this.ordersService.orders.subscribe({
+    
+    this.sub = this.ordersService.getAdminPedidos().subscribe({
       next: orders => this.allOrders.set(orders),
       error: err => console.error('[OrdersManagement] orders error:', err),
     });
@@ -236,6 +284,9 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     try {
       await this.ordersService.updateStatus(order.id, next);
       this.toastService.show('Status atualizado com sucesso.', 'success');
+     
+      order.status = next;
+      this.allOrders.set([...this.allOrders()]);
     } catch (err: any) {
       if (err.status === 409) {
         this.toastService.show(err.error?.message || 'Erro ao atualizar', 'error');
@@ -257,6 +308,8 @@ export class OrdersManagementComponent implements OnInit, OnDestroy {
     try {
       await this.ordersService.cancelOrder(order.id, this.cancelReasonText);
       this.toastService.show('Pedido cancelado.', 'success');
+      order.status = 'cancelled';
+      this.allOrders.set([...this.allOrders()]);
     } catch (err: any) {
       if (err.status === 409) {
         this.toastService.show(err.error?.message || 'Erro ao cancelar', 'error');
