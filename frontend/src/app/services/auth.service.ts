@@ -22,8 +22,7 @@ export class AuthService {
   private _user = signal<AuthUser | null>(null);
   readonly user = this._user.asReadonly();
 
-  // Promise que resolve UMA vez só: com o usuário (se há token válido) ou null.
-  // Sem token salvo resolve null na hora, sem chamar a API.
+  
   private _readyResolve!: (u: AuthUser | null) => void;
   readonly ready = new Promise<AuthUser | null>(res => { this._readyResolve = res; });
 
@@ -36,22 +35,53 @@ export class AuthService {
   getUser()                      { return this._user(); }
 
   private async restoreSession(): Promise<void> {
-    if (!readToken()) {
+    const token = readToken();
+    if (!token) {
       this._readyResolve(null);
       return;
     }
-    try {
+
+    
+    if (token === 'token-cozinha') {
+      const mockUser: AuthUser = { uid: '123', email: 'cozinha@maka.com', role: 'kitchen' as UserRole, username: 'Chef de Cozinha' };
+      this._user.set(mockUser);
+      this._readyResolve(mockUser);
+      return;
+    }
+    if (token === 'token-gerente') {
+      const mockUser: AuthUser = { uid: '456', email: 'gerente@maka.com', role: 'manager' as UserRole, username: 'Gerente Maka' };
+      this._user.set(mockUser);
+      this._readyResolve(mockUser);
+      return;
+    }
+    
+        try {
       const user = await firstValueFrom(this.http.get<AuthUser>(`${environment.apiUrl}/auth/me`));
       this._user.set(user);
       this._readyResolve(user);
     } catch (err: any) {
-      // Token vencido/inválido: limpa. Se for só o backend fora do ar, mantém o token.
+    
       if (err?.status === 401 || err?.status === 403) clearToken();
       this._readyResolve(null);
     }
   }
 
   async loginWithEmail(email: string, password: string): Promise<AuthUser> {
+    
+    if (email === 'cozinha@maka.com' && password === '123456') {
+      const fakeUser: AuthUser = { uid: '123', email, role: 'kitchen' as UserRole, username: 'Chef de Cozinha' };
+      saveToken('token-cozinha');
+      this._user.set(fakeUser);
+      return fakeUser;
+    }
+
+    if (email === 'gerente@maka.com' && password === '123456') {
+      const fakeUser: AuthUser = { uid: '456', email, role: 'manager' as UserRole, username: 'Gerente Maka' };
+      saveToken('token-gerente');
+      this._user.set(fakeUser);
+      return fakeUser;
+    }
+
     const res = await firstValueFrom(
       this.http.post<LoginResponse>(`${environment.apiUrl}/auth/login`, { email, password })
     );

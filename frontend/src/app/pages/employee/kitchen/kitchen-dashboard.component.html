@@ -1,0 +1,19 @@
+<div style="padding: 20px;">
+  <h2>Painel da Cozinha - Novos Pedidos</h2>
+  
+  <div *ngFor="let pedido of pedidosRecebidos$ | async" style="border: 1px solid #ccc; padding: 15px; margin-bottom: 10px; border-radius: 8px;">
+   <p><strong>Pedido #{{ pedido.id }}</strong> | Canal: {{ $any(pedido).canal || 'APP' }}</p>
+    <ul>
+      <li *ngFor="let item of pedido.items">
+       {{ item.quantity }}x {{ item.name }}
+      </li>
+    </ul>
+    <button (click)="iniciarPreparo(pedido.id)" style="background: #28a745; color: white; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
+      Começar Preparo
+    </button>
+  </div>
+
+  <div *ngIf="(pedidosRecebidos$ | async)?.length === 0" style="padding: 20px; color: #666;">
+    Nenhum pedido novo no momento.
+  </div>
+</div>
