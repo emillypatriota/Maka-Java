@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.math.MathContext;
 import java.util.Map;
 
+import com.maka.api.exception.RegraNegocioException;
+
 // Converte a quantidade do item da ficha para a unidade em que o ingrediente tem custo.
 // Ex.: ficha em g e ingrediente com custo por kg -> divide por 1000.
 public final class Unidades {
@@ -34,7 +36,7 @@ public final class Unidades {
         Unidade origem = UNIDADES.get(chave(de));
         Unidade destino = UNIDADES.get(chave(para));
         if (origem == null || destino == null || !origem.grupo().equals(destino.grupo())) {
-            throw new IllegalArgumentException("A unidade " + de + " não combina com a unidade do ingrediente (" + para + ")");
+            throw new RegraNegocioException("A unidade " + de + " não combina com a unidade do ingrediente (" + para + ")");
         }
         return quantidade.multiply(origem.fatorBase()).divide(destino.fatorBase(), MathContext.DECIMAL64);
     }

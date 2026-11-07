@@ -1,5 +1,6 @@
 package com.maka.api.fichatecnica;
 
+import com.maka.api.exception.RegraNegocioException;
 import com.maka.api.fichatecnica.dto.FichaTecnicaRequest;
 import com.maka.api.fichatecnica.dto.FichaTecnicaResponse;
 import com.maka.api.model.FichaTecnica;
@@ -114,7 +115,7 @@ class FichaTecnicaServiceTest {
         when(produtoRepository.findById(1L)).thenReturn(Optional.of(produto(StatusPrato.ATIVO, "100.00")));
         when(ingredienteRepository.findAllById(any())).thenReturn(List.of(ingrediente(7L, "un", "40.00")));
 
-        IllegalArgumentException erro = assertThrows(IllegalArgumentException.class,
+        RegraNegocioException erro = assertThrows(RegraNegocioException.class,
                 () -> service.salvar(1L, request(1, null, item(7L, "1", "un", "0.8"))));
 
         assertEquals("O fator de correção deve ser maior ou igual a 1,0", erro.getMessage());
@@ -126,7 +127,7 @@ class FichaTecnicaServiceTest {
         when(produtoRepository.findById(1L)).thenReturn(Optional.of(produto(StatusPrato.ATIVO, "100.00")));
         when(ingredienteRepository.findAllById(any())).thenReturn(List.of(ingrediente(7L, "g", "0.05")));
 
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(RegraNegocioException.class,
                 () -> service.salvar(1L, request(1, null, item(7L, "1", "ml", "1"))));
         verify(fichaTecnicaRepository, never()).save(any());
     }
@@ -135,7 +136,7 @@ class FichaTecnicaServiceTest {
     void deveRecusarIngredienteRepetido() {
         when(produtoRepository.findById(1L)).thenReturn(Optional.of(produto(StatusPrato.ATIVO, "100.00")));
 
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(RegraNegocioException.class,
                 () -> service.salvar(1L, request(1, null, item(7L, "1", "un", "1"), item(7L, "2", "un", "1"))));
         verify(fichaTecnicaRepository, never()).save(any());
     }

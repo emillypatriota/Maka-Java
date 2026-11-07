@@ -1,5 +1,6 @@
 package com.maka.api.fichatecnica;
 
+import com.maka.api.exception.RegraNegocioException;
 import com.maka.api.fichatecnica.CustoPratoService.CustoPrato;
 import com.maka.api.fichatecnica.CustoPratoService.Faixa;
 import com.maka.api.fichatecnica.CustoPratoService.ItemFicha;
@@ -51,7 +52,7 @@ class CustoPratoServiceTest {
 
     @Test
     void deveRecusarFatorDeCorrecaoMenorQueUm() {
-        IllegalArgumentException erro = assertThrows(IllegalArgumentException.class,
+        RegraNegocioException erro = assertThrows(RegraNegocioException.class,
                 () -> service.calcular(List.of(item("1", "10.00", "0.9")), new BigDecimal("50")));
 
         assertEquals("O fator de correção deve ser maior ou igual a 1,0", erro.getMessage());
