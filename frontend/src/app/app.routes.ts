@@ -18,7 +18,6 @@ export const routes: Routes = [
       // Login e cadastro do cliente
       { path: 'entrar',    loadComponent: () => import('./pages/auth/client-login/client-login.component').then(m => m.ClientLoginComponent) },
       { path: 'cadastro',  loadComponent: () => import('./pages/auth/register/register.component').then(m => m.RegisterComponent) },
-> develop
     ]
   },
 
