@@ -40,8 +40,11 @@ import { ToastService } from '../../../services/toast.service';
             <thead>
               <tr style="color:var(--text-tertiary);font-size:var(--text-xs);text-transform:uppercase">
                 <th style="padding:1rem">Nome</th>
+                <th style="padding:1rem">SKU</th>
                 <th style="padding:1rem">Unidade</th>
+                <th style="padding:1rem">Estoque mínimo</th>
                 <th style="padding:1rem">Custo unitário</th>
+                <th style="padding:1rem">Status</th>
                 <th style="padding:1rem;text-align:right">Ações</th>
               </tr>
             </thead>
@@ -49,15 +52,22 @@ import { ToastService } from '../../../services/toast.service';
               <tr *ngFor="let ingrediente of ingredientes"
                   style="border-top:1px solid var(--border);color:var(--text-primary)">
                 <td style="padding:1rem;font-weight:600">{{ ingrediente.nome }}</td>
+                <td style="padding:1rem;color:var(--text-secondary)">{{ ingrediente.sku || '—' }}</td>
                 <td style="padding:1rem;color:var(--text-secondary)">{{ ingrediente.unidadeMedida }}</td>
+                <td style="padding:1rem;color:var(--text-secondary)">
+                  {{ ingrediente.estoqueMinimo }} {{ ingrediente.unidadeMedida }}
+                </td>
                 <td style="padding:1rem;color:var(--text-secondary)">
                   {{ ingrediente.custoUnitario | currency:'BRL':'symbol':'1.2-4' }} / {{ ingrediente.unidadeMedida }}
                 </td>
+                <td style="padding:1rem;color:var(--text-secondary)">
+                  {{ ingrediente.status === 'ATIVO' ? 'Ativo' : 'Inativo' }}
+                </td>
                 <td style="padding:1rem;text-align:right;white-space:nowrap">
                   <button class="btn btn-ghost btn-sm" type="button" (click)="abrirEdicao(ingrediente)">Editar</button>
-                  <button class="btn btn-ghost btn-sm" type="button" [disabled]="excluindoId === ingrediente.id"
+                  <button *ngIf="ingrediente.status === 'ATIVO'" class="btn btn-ghost btn-sm" type="button" [disabled]="excluindoId === ingrediente.id"
                           (click)="excluir(ingrediente)">
-                    {{ excluindoId === ingrediente.id ? 'Removendo...' : 'Excluir' }}
+                    {{ excluindoId === ingrediente.id ? 'Desativando...' : 'Desativar' }}
                   </button>
                 </td>
               </tr>
@@ -102,6 +112,10 @@ import { ToastService } from '../../../services/toast.service';
             <input class="form-input" [(ngModel)]="form.nome" maxlength="100" required>
           </label>
           <label class="form-group">
+            <span class="form-label">SKU</span>
+            <input class="form-input" [(ngModel)]="form.sku" maxlength="40" placeholder="Opcional">
+          </label>
+          <label class="form-group">
             <span class="form-label">Unidade de medida *</span>
             <input class="form-input" [(ngModel)]="form.unidadeMedida" maxlength="20"
                    placeholder="Ex.: kg, g, L, unidade" required>
@@ -110,6 +124,18 @@ import { ToastService } from '../../../services/toast.service';
             <span class="form-label">Custo por unidade (R$) *</span>
             <input class="form-input" type="number" [(ngModel)]="form.custoUnitario"
                    min="0" step="0.0001" required>
+          </label>
+          <label class="form-group">
+            <span class="form-label">Estoque mínimo</span>
+            <input class="form-input" type="number" [(ngModel)]="form.estoqueMinimo"
+                   min="0" step="0.001" required>
+          </label>
+          <label class="form-group">
+            <span class="form-label">Status</span>
+            <select class="form-input" [(ngModel)]="form.status">
+              <option value="ATIVO">Ativo</option>
+              <option value="INATIVO">Inativo</option>
+            </select>
           </label>
           <p *ngIf="erroFormulario" role="alert" style="color:var(--danger-text)">{{ erroFormulario }}</p>
         </div>
@@ -174,7 +200,10 @@ export class IngredientsManagementComponent implements OnInit {
     this.form = {
       nome: ingrediente.nome,
       unidadeMedida: ingrediente.unidadeMedida,
-      custoUnitario: ingrediente.custoUnitario
+      custoUnitario: ingrediente.custoUnitario,
+      sku: ingrediente.sku,
+      estoqueMinimo: ingrediente.estoqueMinimo,
+      status: ingrediente.status
     };
     this.erroFormulario = '';
     this.modalAberto = true;
@@ -190,10 +219,14 @@ export class IngredientsManagementComponent implements OnInit {
     const payload: IngredienteInput = {
       nome: this.form.nome.trim(),
       unidadeMedida: this.form.unidadeMedida.trim(),
-      custoUnitario: Number(this.form.custoUnitario)
+      custoUnitario: Number(this.form.custoUnitario),
+      sku: this.form.sku?.trim() ?? '',
+      estoqueMinimo: Number(this.form.estoqueMinimo),
+      status: this.form.status
     };
-    if (!payload.nome || !payload.unidadeMedida || !Number.isFinite(payload.custoUnitario) || payload.custoUnitario < 0) {
-      this.erroFormulario = 'Informe nome, unidade de medida e um custo igual ou maior que zero.';
+    if (!payload.nome || !payload.unidadeMedida || !Number.isFinite(payload.custoUnitario)
+        || payload.custoUnitario < 0 || !Number.isFinite(payload.estoqueMinimo) || payload.estoqueMinimo < 0) {
+      this.erroFormulario = 'Informe nome, unidade, custo e estoque mínimo com valores válidos.';
       return;
     }
 
@@ -218,11 +251,11 @@ export class IngredientsManagementComponent implements OnInit {
   }
 
   excluir(ingrediente: Ingrediente): void {
-    if (!window.confirm(`Excluir o ingrediente "${ingrediente.nome}"?`)) return;
+    if (!window.confirm(`Desativar o ingrediente "${ingrediente.nome}"?`)) return;
     this.excluindoId = ingrediente.id;
     this.service.excluir(ingrediente.id).subscribe({
       next: () => {
-        this.toast.show('Ingrediente excluído.');
+        this.toast.show('Ingrediente desativado.');
         const proximaPagina = this.ingredientes.length === 1 && this.pagina > 0 ? this.pagina - 1 : this.pagina;
         this.excluindoId = null;
         this.carregar(proximaPagina);
@@ -236,7 +269,14 @@ export class IngredientsManagementComponent implements OnInit {
   }
 
   private novoFormulario(): IngredienteInput {
-    return { nome: '', unidadeMedida: '', custoUnitario: 0 };
+    return {
+      nome: '',
+      unidadeMedida: '',
+      custoUnitario: 0,
+      sku: null,
+      estoqueMinimo: 0,
+      status: 'ATIVO'
+    };
   }
 
   private mensagemErro(error: unknown, fallback: string): string {

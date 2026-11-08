@@ -8,6 +8,9 @@ export interface Ingrediente {
   nome: string;
   unidadeMedida: string;
   custoUnitario: number;
+  sku: string | null;
+  estoqueMinimo: number;
+  status: 'ATIVO' | 'INATIVO';
 }
 
 export interface IngredientePage {

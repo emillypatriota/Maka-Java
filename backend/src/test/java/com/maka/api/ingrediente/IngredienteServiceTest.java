@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.maka.api.ingrediente.dto.IngredienteRequest;
 import com.maka.api.model.Ingrediente;
+import com.maka.api.model.StatusIngrediente;
 import com.maka.api.repository.IngredienteRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -36,12 +37,16 @@ class IngredienteServiceTest {
                 });
 
         var resposta = new IngredienteService(ingredienteRepository).criar(
-                new IngredienteRequest("  Farinha  ", " kg ", new BigDecimal("2.5000")));
+                new IngredienteRequest("  Farinha  ", " kg ", new BigDecimal("2.5000"),
+                        " FAR-1 ", new BigDecimal("3"), StatusIngrediente.ATIVO));
 
         assertEquals(7L, resposta.id());
         assertEquals("Farinha", resposta.nome());
         assertEquals("kg", resposta.unidadeMedida());
         assertEquals(new BigDecimal("2.5000"), resposta.custoUnitario());
+        assertEquals("FAR-1", resposta.sku());
+        assertEquals(new BigDecimal("3"), resposta.estoqueMinimo());
+        assertEquals(StatusIngrediente.ATIVO, resposta.status());
     }
 
     @Test
@@ -52,10 +57,24 @@ class IngredienteServiceTest {
         when(ingredienteRepository.save(ingrediente)).thenReturn(ingrediente);
 
         var resposta = new IngredienteService(ingredienteRepository).atualizar(
-                3L, new IngredienteRequest("Tomate", "kg", new BigDecimal("6.75")));
+                3L, new IngredienteRequest("Tomate", "kg", new BigDecimal("6.75"),
+                        null, null, null));
 
         assertEquals("Tomate", resposta.nome());
         assertEquals(new BigDecimal("6.75"), resposta.custoUnitario());
+    }
+
+    @Test
+    void deveDesativarSemRemoverFisicamente() {
+        Ingrediente ingrediente = new Ingrediente();
+        ingrediente.setId(8L);
+        when(ingredienteRepository.findById(8L)).thenReturn(Optional.of(ingrediente));
+        when(ingredienteRepository.save(ingrediente)).thenReturn(ingrediente);
+
+        new IngredienteService(ingredienteRepository).excluir(8L);
+
+        assertEquals(StatusIngrediente.INATIVO, ingrediente.getStatus());
+        verify(ingredienteRepository).save(ingrediente);
     }
 
     @Test

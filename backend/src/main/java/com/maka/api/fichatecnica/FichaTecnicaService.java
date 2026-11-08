@@ -25,6 +25,7 @@ import com.maka.api.model.FichaTecnica;
 import com.maka.api.model.FichaTecnicaItem;
 import com.maka.api.model.Ingrediente;
 import com.maka.api.model.Produto;
+import com.maka.api.model.StatusIngrediente;
 import com.maka.api.model.StatusPrato;
 import com.maka.api.produto.dto.StatusPratoJson;
 import com.maka.api.repository.FichaTecnicaRepository;
@@ -165,6 +166,13 @@ public class FichaTecnicaService {
                 .findFirst()
                 .ifPresent(id -> {
                     throw new NoSuchElementException("Ingrediente não encontrado: " + id);
+                });
+        encontrados.values().stream()
+                .filter(ingrediente -> ingrediente.getStatus() == StatusIngrediente.INATIVO)
+                .findFirst()
+                .ifPresent(ingrediente -> {
+                    throw new RegraNegocioException(
+                            "Ingrediente inativo não pode ser usado em ficha técnica: " + ingrediente.getId());
                 });
         return encontrados;
     }
