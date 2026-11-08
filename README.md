@@ -86,7 +86,8 @@ O schema é criado e versionado pelo Flyway (`V1` a `V5`). O Hibernate só valid
 - **Cardápio e carrinho:** cardápio público com filtro por categoria, mostrando apenas pratos ativos.
 - **Gestão:** CRUD de pratos, categorias e funcionários, com paginação e exclusão lógica.
 - **Ficha técnica e custo:** ingredientes por prato, fator de correção, food cost com faixas verde, amarela e vermelha, e aviso acima de 35%.
-- **Ingredientes:** CRUD paginado em `/gerente/ingredientes`, protegido para o perfil gerente.
+- **Ingredientes:** CRUD paginado em `/gerente/ingredientes`, com SKU, status e estoque mínimo; exclusão lógica por status `INATIVO` (RN06).
+- **Estoque:** entradas e saídas manuais, saldo calculado pelas movimentações, alertas no menu para saldo no mínimo ou abaixo e histórico paginado em `/gerente/estoque`.
 - **Insights:** indicadores e gráficos Chart.js a partir de `GET /api/insights/resumo`.
 - **Autenticação:** login com JWT de 8 horas e senhas em BCrypt; as rotas `/api/admin/**` exigem o perfil gerente.
 
@@ -97,17 +98,31 @@ O schema é criado e versionado pelo Flyway (`V1` a `V5`). O Hibernate só valid
 | `GET` | `/api/admin/ingredientes?page=0&size=10` | Lista paginada, ordenada por nome (`size` máximo 100) |
 | `POST` | `/api/admin/ingredientes` | Cria ingrediente |
 | `PUT` | `/api/admin/ingredientes/{id}` | Atualiza ingrediente |
-| `DELETE` | `/api/admin/ingredientes/{id}` | Exclui ingrediente |
+| `DELETE` | `/api/admin/ingredientes/{id}` | Inativa logicamente o ingrediente (RN06) |
 
-O corpo de `POST` e `PUT` usa `nome`, `unidadeMedida` e `custoUnitario`. A listagem retorna uma página Spring Data com os registros em `content`.
+O corpo de `POST` e `PUT` usa `nome`, `unidadeMedida`, `custoUnitario`, `sku`, `estoqueMinimo` e `status`. `sku`, `estoqueMinimo` e `status` são opcionais na API; o mínimo padrão é zero e o status padrão é `ATIVO`.
 
 ```json
 {
   "nome": "Farinha de trigo",
   "unidadeMedida": "kg",
-  "custoUnitario": 6.5
+  "custoUnitario": 6.5,
+  "sku": "FAR-001",
+  "estoqueMinimo": 5,
+  "status": "ATIVO"
 }
 ```
+
+### Contrato de estoque
+
+| Método | Endpoint | Descrição |
+|---|---|---|
+| `GET` | `/api/admin/estoque/saldos` | Saldo atual dos ingredientes ativos e contagem de alertas |
+| `GET` | `/api/admin/estoque/movimentacoes?page=0&size=20` | Histórico de movimentações (máximo 100 por página) |
+| `POST` | `/api/admin/estoque/entradas` | Registra entrada manual com motivo `AJUSTE` |
+| `POST` | `/api/admin/estoque/saidas` | Registra saída manual com motivo obrigatório |
+
+Saídas manuais aceitam `DESPERDICIO`, `VENCIMENTO`, `QUEBRA` ou `USO_INTERNO`; não podem deixar saldo negativo. O saldo é calculado como entradas e estornos menos saídas. As colunas necessárias já existem na migração V3.
 
 ## Testes
 

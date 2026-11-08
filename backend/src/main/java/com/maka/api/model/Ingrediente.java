@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -29,4 +31,14 @@ public class Ingrediente {
 
     @Column(name = "custo_unitario", nullable = false, precision = 12, scale = 4)
     private BigDecimal custoUnitario;
+
+    @Column(length = 40, unique = true)
+    private String sku;
+
+    @Column(name = "estoque_minimo", nullable = false, precision = 12, scale = 3)
+    private BigDecimal estoqueMinimo = BigDecimal.ZERO;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private StatusIngrediente status = StatusIngrediente.ATIVO;
 }

@@ -6,6 +6,7 @@ import { filter } from 'rxjs/operators';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
 import { OrdersService } from '../../services/orders.service';
+import { EstoqueService } from '../../services/estoque.service';
 
 interface NavItem {
   label: string;
@@ -278,12 +279,14 @@ export class EmployeeLayoutComponent implements OnInit, OnDestroy {
   private pendingCount = signal(0);
   private routerSub?: Subscription;
   private ordersSub?: Subscription;
+  private estoqueTimer?: ReturnType<typeof setInterval>;
 
   constructor(
     private auth: AuthService,
     private toast: ToastService,
     private router: Router,
     private ordersService: OrdersService,
+    private estoqueService: EstoqueService,
     private cdr: ChangeDetectorRef
   ) {
     this.routerSub = this.router.events.pipe(
@@ -316,6 +319,10 @@ export class EmployeeLayoutComponent implements OnInit, OnDestroy {
       next: orders => this.pendingCount.set(orders.filter((o: any) => o.status === 'pending').length),
       error: err => console.error('[EmployeeLayout] orders error:', err),
     });
+    if (u.role === 'manager' || u.role === 'admin') {
+      this.estoqueService.atualizarAlertas();
+      this.estoqueTimer = setInterval(() => this.estoqueService.atualizarAlertas(), 60_000);
+    }
 
     this.ready = true;
     this.cdr.detectChanges();
@@ -324,6 +331,7 @@ export class EmployeeLayoutComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.routerSub?.unsubscribe();
     this.ordersSub?.unsubscribe();
+    if (this.estoqueTimer) clearInterval(this.estoqueTimer);
   }
 
   private resolvePageTitle(): string {
@@ -331,6 +339,7 @@ export class EmployeeLayoutComponent implements OnInit, OnDestroy {
     if (url.includes('dashboard'))    return 'Dashboard';
     if (url.includes('pedidos'))      return 'Pedidos';
     if (url.includes('ingredientes')) return 'Ingredientes';
+    if (url.includes('estoque'))      return 'Estoque';
     if (url.includes('cardapio'))     return 'Cardápio';
     if (url.includes('cozinha'))      return 'Cozinha';
     if (url.includes('entregas'))     return 'Entregas';
@@ -365,6 +374,12 @@ export class EmployeeLayoutComponent implements OnInit, OnDestroy {
             label: 'Ingredientes',
             route: '/gerente/ingredientes',
             icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19h16M6 16l2-8h8l2 8M9 8V5a3 3 0 016 0v3M10 12h4"/></svg>`,
+          },
+          {
+            label: 'Estoque',
+            route: '/gerente/estoque',
+            icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19h16M6 16l2-8h8l2 8M9 8V5a3 3 0 016 0v3M10 12h4"/></svg>`,
+            badgeSignal: () => this.estoqueService.alertas(),
           },
           {
             label: 'Cozinha',
