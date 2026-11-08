@@ -1,5 +1,6 @@
 package com.maka.api.produto;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -29,6 +30,7 @@ import com.maka.api.produto.dto.StatusRequest;
 
 // Gestão do cardápio (MANAGER, pela regra /api/admin/** do SecurityConfig)
 @RestController
+@PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
 @Validated
 @RequestMapping("/api/admin/pratos")
 public class AdminProdutoController {
@@ -46,7 +48,7 @@ public class AdminProdutoController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String busca,
             @RequestParam(defaultValue = "0") @Min(0) int page,
-            @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size) {
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         return produtoService.listar(categoria, status, busca, PageRequest.of(page, size, Sort.by("categoria.ordem", "id")));
     }
 

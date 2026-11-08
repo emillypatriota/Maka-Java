@@ -1,5 +1,6 @@
 package com.maka.api.insights.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import com.maka.api.insights.dto.InsightsResumoResponseDTO;
 import com.maka.api.insights.service.InsightsService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
 @RequestMapping("/api/insights")
 @Tag(name = "Insights", description = "Endpoints de relatórios e métricas de desempenho")
 public class InsightsController {

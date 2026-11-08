@@ -12,7 +12,7 @@ export type OrderStatus =
   | 'delivered'
   | 'cancelled';
 
-export type UserRole = 'manager' | 'kitchen' | 'delivery' | null;
+export type UserRole = 'admin' | 'manager' | 'kitchen' | 'delivery' | 'client' | null;
 export type PaymentMethod = 'credit' | 'debit' | 'pix' | 'cash';
 export type MenuCategory =
   | 'entradas'

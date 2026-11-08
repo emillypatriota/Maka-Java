@@ -1,5 +1,6 @@
 package com.maka.api.ingrediente;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -25,6 +26,7 @@ import com.maka.api.ingrediente.dto.IngredienteRequest;
 import com.maka.api.ingrediente.dto.IngredienteResponse;
 
 @RestController
+@PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
 @Validated
 @RequestMapping("/api/admin/ingredientes")
 public class IngredienteController {

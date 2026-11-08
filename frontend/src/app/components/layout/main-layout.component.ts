@@ -1,7 +1,9 @@
 import { Component } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { AsyncPipe, NgIf } from '@angular/common';
 import { CartService } from '../../services/cart.service';
+import { AuthService } from '../../services/auth.service';
+import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-main-layout',
@@ -46,6 +48,18 @@ import { CartService } from '../../services/cart.service';
 
           <!-- Right side actions -->
           <div style="display:flex;align-items:center;gap:.625rem">
+
+            <!-- Conta: Entrar (visitante) ou nome + Sair (logado) -->
+            <div class="account-desktop">
+              <ng-container *ngIf="auth.user() as u; else guestActions">
+                <a [routerLink]="accountRoute(u.role)" class="account-link" title="Minha conta">{{ firstName(u.username) }}</a>
+                <button type="button" (click)="logout()" class="account-btn">Sair</button>
+              </ng-container>
+              <ng-template #guestActions>
+                <a routerLink="/entrar" class="account-link">Entrar</a>
+                <a routerLink="/cadastro" class="account-btn">Criar conta</a>
+              </ng-template>
+            </div>
 
             <!-- Cart button -->
             <div class="cart-btn-wrapper">
@@ -118,6 +132,9 @@ import { CartService } from '../../services/cart.service';
             <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
             Meus Pedidos
           </a>
+          <a *ngIf="!auth.user()" routerLink="/entrar" routerLinkActive="mobile-nav-active" (click)="menuOpen=false" class="mobile-nav-link">Entrar</a>
+          <a *ngIf="!auth.user()" routerLink="/cadastro" routerLinkActive="mobile-nav-active" (click)="menuOpen=false" class="mobile-nav-link">Criar conta</a>
+          <a *ngIf="auth.user()" (click)="logout(); menuOpen=false" class="mobile-nav-link" style="cursor:pointer">Sair</a>
         </nav>
 
         <div style="padding:1rem 1.5rem;border-top:1px solid rgba(255,255,255,.07);margin-top:auto">
@@ -209,6 +226,19 @@ import { CartService } from '../../services/cart.service';
     }
     .desktop-nav a:hover, .desktop-nav a.active { color: var(--brand-400); }
 
+    .account-desktop { display: flex; align-items: center; gap: .5rem; }
+    .account-link {
+      font-size: .78rem; font-weight: 500; color: rgba(255,255,255,.75);
+      padding: .45rem .5rem; transition: color 150ms; text-decoration: none;
+    }
+    .account-link:hover { color: var(--brand-400); }
+    .account-btn {
+      font-size: .74rem; font-weight: 600; color: rgba(255,255,255,.85); cursor: pointer;
+      padding: .45rem .75rem; border-radius: var(--r-lg); text-decoration: none;
+      background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); transition: all 150ms;
+    }
+    .account-btn:hover { background: rgba(255,255,255,.14); }
+
     .hamburger-btn {
       display: none;
       width: 40px; height: 40px;
@@ -253,6 +283,7 @@ import { CartService } from '../../services/cart.service';
 
     @media (max-width: 768px) {
       .desktop-nav { display: none !important; }
+      .account-desktop { display: none !important; }
       .hamburger-btn { display: flex !important; }
     }
     @media (max-width: 480px) {
@@ -263,5 +294,26 @@ import { CartService } from '../../services/cart.service';
 export class MainLayoutComponent {
   cartCount$ = this.cart.count;
   menuOpen = false;
-  constructor(private cart: CartService) {}
+
+  constructor(
+    private cart: CartService,
+    public auth: AuthService,
+    private router: Router,
+    private toast: ToastService
+  ) {}
+
+  firstName(name: string): string {
+    return (name || '').trim().split(' ')[0] || 'Conta';
+  }
+
+  // Cliente vê os pedidos dele; funcionário vai para o painel do perfil
+  accountRoute(role: string | null): string {
+    return role === 'client' ? '/meus-pedidos' : this.auth.homeRoute(role as any);
+  }
+
+  async logout() {
+    await this.auth.logout();
+    this.toast.show('Você saiu da sua conta');
+    this.router.navigate(['/']);
+  }
 }

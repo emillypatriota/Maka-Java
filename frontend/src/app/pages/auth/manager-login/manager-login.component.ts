@@ -234,7 +234,8 @@ function makeLoginComponent(
       this.loading = true;
       try {
         const user = await this.auth.loginWithEmail(this.email, this.password);
-        if (user.role !== role) {
+        // ADMIN entra por qualquer portal de funcionario (no backend ele passa em tudo que o gerente passa)
+        if (user.role !== role && user.role !== 'admin') {
           await this.auth.logout();
           throw new Error('Esta conta não tem acesso a este portal.');
         }
