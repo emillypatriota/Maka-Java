@@ -7,7 +7,7 @@ export const routes: Routes = [
     path: '',
     loadComponent: () => import('./components/layout/main-layout.component').then(m => m.MainLayoutComponent),
     children: [
-      { path: '',          loadComponent: () => import('./pages/home/home.component').then(m => m.HomeComponent) },
+      { path: '',         loadComponent: () => import('./pages/home/home.component').then(m => m.HomeComponent) },
       { path: 'cardapio',  loadComponent: () => import('./pages/menu/menu.component').then(m => m.MenuComponent) },
       { path: 'carrinho',  loadComponent: () => import('./pages/cart/cart.component').then(m => m.CartComponent) },
       { path: 'checkout',  loadComponent: () => import('./pages/checkout/checkout.component').then(m => m.CheckoutComponent) },
@@ -38,6 +38,9 @@ export const routes: Routes = [
       { path: 'ingredientes', loadComponent: () => import('./pages/employee/ingredients/ingredients-management.component').then(m => m.IngredientsManagementComponent) },
       { path: 'cozinha',   loadComponent: () => import('./pages/employee/kitchen/kitchen-dashboard.component').then(m => m.KitchenDashboardComponent) },
       { path: 'entregas',  loadComponent: () => import('./pages/delivery/dashboard/delivery-dashboard.component').then(m => m.DeliveryDashboardComponent) },
+      // Adicionando explicitamente as rotas solicitadas na área administrativa
+      { path: 'admin/cozinha', loadComponent: () => import('./pages/employee/kitchen/kitchen-dashboard.component').then(m => m.KitchenDashboardComponent) },
+      { path: 'admin/entregas', loadComponent: () => import('./pages/delivery/dashboard/delivery-dashboard.component').then(m => m.DeliveryDashboardComponent) },
       { path: 'insights',      loadComponent: () => import('./pages/employee/insights/insights-dashboard.component').then(m => m.InsightsDashboardComponent) },
       { path: 'funcionarios',  loadComponent: () => import('./pages/employee/staff/staff-management.component').then(m => m.StaffManagementComponent) },
     ]

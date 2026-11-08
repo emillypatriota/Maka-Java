@@ -73,7 +73,7 @@ const STATUS_FILTERS: { value: DishStatus | ''; label: string }[] = [
                  [ngModel]="search" (ngModelChange)="onSearch($event)">
         </div>
 
-        <!-- Category filter: width:0 impede as pílulas de alargar a página no tablet (RNF09) -->
+        <!-- Category filter -->
         <div class="cat-nav dark-pills" style="flex:1 1 260px;width:0;min-width:0">
           <button class="cat-pill" [class.active]="!activeCategory" (click)="setCategory('')">Todas</button>
           <button *ngFor="let c of categories()" class="cat-pill" [class.active]="activeCategory === c.name"
@@ -141,7 +141,7 @@ const STATUS_FILTERS: { value: DishStatus | ''; label: string }[] = [
               <span *ngIf="item.prepTime" class="chip">⏱ {{ item.prepTime }}min</span>
             </div>
 
-            <!-- Food cost (RF-013) -->
+            <!-- Food cost -->
             <div *ngIf="item.hasTechnicalSheet && item.foodCostLevel as level" class="food-cost"
                  [style.background]="colors[level].bg" [style.color]="colors[level].text" [style.border]="'1px solid ' + colors[level].border"
                  [attr.title]="item.foodCostWarning ? 'Food cost acima de 35% (RN02)' : null">
@@ -398,7 +398,6 @@ export class MenuManagementComponent implements OnDestroy {
 
   ngOnDestroy() { clearTimeout(this.searchTimer); }
 
-  // Só categorias ativas aceitam prato novo; na edição, mantém a atual mesmo se inativa
   formCategories(): string[] {
     const active = this.categories().filter(c => c.status === 'active').map(c => c.name);
     return this.form.category && !active.includes(this.form.category) ? [this.form.category, ...active] : active;
@@ -407,7 +406,7 @@ export class MenuManagementComponent implements OnDestroy {
   get statCards() {
     const s = this.summary();
     return [
-      { label: 'Total de Itens', value: s?.total ?? '—',    color: 'var(--text-primary)' },
+      { label: 'Total de Itens', value: s?.total ?? '—',     color: 'var(--text-primary)' },
       { label: 'Ativos',         value: s?.active ?? '—',   color: 'var(--success-text)' },
       { label: 'Pausados',       value: s?.paused ?? '—',   color: 'var(--warning-text)' },
       { label: 'Inativos',       value: s?.inactive ?? '—', color: 'var(--neutral-text)' },
@@ -416,8 +415,6 @@ export class MenuManagementComponent implements OnDestroy {
   }
 
   trackById(_: number, item: MenuItem) { return item.id; }
-
-  // ── Carregamento e filtros ─────────────────────────────────
 
   async reload(page = this.page()): Promise<void> {
     this.loading.set(true);
@@ -429,7 +426,6 @@ export class MenuManagementComponent implements OnDestroy {
         }),
         this.menuService.summary(),
       ]);
-      // Se a página ficou vazia (ex.: removeu o último item dela), volta uma
       if (result.content.length === 0 && page > 0) return this.reload(page - 1);
       this.items.set(result.content);
       this.page.set(result.number);
@@ -476,8 +472,6 @@ export class MenuManagementComponent implements OnDestroy {
     this.reload();
   }
 
-  // ── Criar / editar ─────────────────────────────────────────
-
   openAdd() {
     this.editingId = null;
     this.form = { ...EMPTY_FORM, category: this.formCategories()[0] ?? '' };
@@ -488,13 +482,13 @@ export class MenuManagementComponent implements OnDestroy {
   openEdit(item: MenuItem) {
     this.editingId = item.id;
     this.form = {
-      name:              item.name,
-      description:       item.description ?? '',
-      price:             item.price,
-      category:          item.category,
-      image:             item.image ?? '',
-      isSpecial:         !!item.isSpecial,
-      prepTime:          item.prepTime ?? null,
+      name:                 item.name,
+      description:          item.description ?? '',
+      price:                item.price,
+      category:             item.category,
+      image:                item.image ?? '',
+      isSpecial:            !!item.isSpecial,
+      prepTime:             item.prepTime ?? null,
     };
     this.formError = '';
     this.showModal.set(true);
@@ -517,13 +511,13 @@ export class MenuManagementComponent implements OnDestroy {
     this.saving.set(true);
 
     const payload = {
-      name:              this.form.name.trim(),
-      description:       this.form.description.trim(),
-      price:             Number(this.form.price),
-      category:          this.form.category,
-      image:             this.form.image.trim() || 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=85',
-      isSpecial:         this.form.isSpecial,
-      prepTime:          this.form.prepTime ? Number(this.form.prepTime) : undefined,
+      name:                 this.form.name.trim(),
+      description:          this.form.description.trim(),
+      price:                Number(this.form.price),
+      category:             this.form.category,
+      image:                this.form.image.trim() || 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=85',
+      isSpecial:            this.form.isSpecial,
+      prepTime:             this.form.prepTime ? Number(this.form.prepTime) : undefined,
     };
 
     try {
@@ -544,8 +538,6 @@ export class MenuManagementComponent implements OnDestroy {
       this.saving.set(false);
     }
   }
-
-  // ── Status, exclusão e ficha técnica ───────────────────────
 
   async changeStatus(item: MenuItem, status: DishStatus) {
     const messages: Record<DishStatus, string> = {
