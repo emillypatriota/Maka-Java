@@ -43,7 +43,7 @@ const STATUS_CONFIG: Record<string, { label:string; color:string; bg:string; des
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.25rem">
               <div>
                 <div style="display:flex;align-items:center;gap:.625rem;margin-bottom:.375rem">
-                  <span style="font-family:monospace;font-size:.78rem;background:var(--stone-100);padding:.2rem .6rem;border-radius:4px;color:var(--stone-500)">#{{ order.orderNumber }}</span>
+                  <span style="font-family:monospace;font-size:.78rem;background:var(--stone-100);padding:.2rem .6rem;border-radius:4px;color:var(--stone-500)">#{{ order.orderNumber || order.id }}</span>
                   <span class="badge" [style.background]="cfg(order.status).bg" [style.color]="cfg(order.status).color">
                     {{ cfg(order.status).label }}
                   </span>
@@ -52,7 +52,7 @@ const STATUS_CONFIG: Record<string, { label:string; color:string; bg:string; des
               </div>
               <div style="text-align:right">
                 <p style="font-family:var(--font-serif);font-size:1.5rem;color:var(--stone-900)">R$ {{ order.total.toFixed(2) }}</p>
-                <p style="font-size:.75rem;color:var(--stone-400)">{{ order.paymentMethod }}</p>
+                <p style="font-size:.75rem;color:var(--stone-400)">{{ order.paymentMethod || 'PIX / Cartão' }}</p>
               </div>
             </div>
 
@@ -68,14 +68,14 @@ const STATUS_CONFIG: Record<string, { label:string; color:string; bg:string; des
             <div style="background:var(--stone-50);border-radius:var(--r-lg);padding:1rem;margin-bottom:1rem">
               <p style="font-size:.68rem;font-weight:600;color:var(--stone-400);letter-spacing:.1em;margin-bottom:.625rem">ITENS DO PEDIDO</p>
               <div *ngFor="let item of order.items" style="display:flex;align-items:center;gap:.75rem;padding:.375rem 0;border-bottom:1px solid var(--stone-100)">
-                <img [src]="item.image" [alt]="item.name" style="width:2.5rem;height:2.5rem;border-radius:6px;object-fit:cover;flex-shrink:0">
+                <img *ngIf="item.image" [src]="item.image" [alt]="item.name" style="width:2.5rem;height:2.5rem;border-radius:6px;object-fit:cover;flex-shrink:0" onerror="this.style.display='none'">
                 <span style="flex:1;font-size:.85rem;color:var(--stone-700)">{{ item.quantity }}× {{ item.name }}</span>
-                <span style="font-size:.85rem;font-weight:500;color:var(--stone-800)">R$ {{ (item.price*item.quantity).toFixed(2) }}</span>
+                <span *ngIf="item.price" style="font-size:.85rem;font-weight:500;color:var(--stone-800)">R$ {{ (item.price*item.quantity).toFixed(2) }}</span>
               </div>
             </div>
 
             <!-- Endereço -->
-            <p style="font-size:.8rem;color:var(--stone-400);display:flex;align-items:flex-start;gap:.375rem">
+            <p *ngIf="order.customer?.address" style="font-size:.8rem;color:var(--stone-400);display:flex;align-items:flex-start;gap:.375rem">
               <span style="flex-shrink:0">📍</span><span>{{ order.customer.address }}</span>
             </p>
             <p *ngIf="order.observations" style="font-size:.78rem;background:#fffbeb;border:1px solid #fde68a;padding:.5rem .75rem;border-radius:6px;color:#92400e;margin-top:.5rem">
@@ -88,17 +88,24 @@ const STATUS_CONFIG: Record<string, { label:string; color:string; bg:string; des
   `,
 })
 export class MyOrdersComponent implements OnInit {
-  orders: Order[] = [];
+  orders: any[] = [];
   steps = STATUS_STEPS;
+  
   cfg(status: string) { return STATUS_CONFIG[status] ?? STATUS_CONFIG['pending']; }
   stepIndex(status: string) { return STATUS_STEPS.indexOf(status); }
+
   constructor(private ordersService: OrdersService) {}
+
   ngOnInit() {
-    const myPhone = localStorage.getItem('maka_customer_phone');
-    this.ordersService.orders.subscribe(all => {
-      this.orders = myPhone
-        ? all.filter(o => o.customer?.phone === myPhone)
-        : all.filter(o => o.isLocal);
+    
+    this.ordersService.getMyOrders().subscribe({
+      next: (data) => {
+        this.orders = data.map(o => ({
+          ...o,
+          createdAt: new Date(o.createdAt)
+        }));
+      },
+      error: (err) => console.error('[MyOrders] Erro ao carregar pedidos:', err)
     });
   }
 }

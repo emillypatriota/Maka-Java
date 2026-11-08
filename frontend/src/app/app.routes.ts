@@ -14,9 +14,11 @@ export const routes: Routes = [
       { path: 'checkout',  canActivate: [authGuard], loadComponent: () => import('./pages/checkout/checkout.component').then(m => m.CheckoutComponent) },
       { path: 'confirmacao', canActivate: [authGuard], loadComponent: () => import('./pages/confirmation/confirmation.component').then(m => m.ConfirmationComponent) },
       { path: 'meus-pedidos', canActivate: [authGuard], loadComponent: () => import('./pages/my-orders/my-orders.component').then(m => m.MyOrdersComponent) },
+      { path: 'meus-pedidos/:id', canActivate: [authGuard], loadComponent: () => import('./pages/my-orders/order-details.component').then(m => m.OrderDetailsComponent) },
       // Login e cadastro do cliente
       { path: 'entrar',    loadComponent: () => import('./pages/auth/client-login/client-login.component').then(m => m.ClientLoginComponent) },
       { path: 'cadastro',  loadComponent: () => import('./pages/auth/register/register.component').then(m => m.RegisterComponent) },
+> develop
     ]
   },
 
