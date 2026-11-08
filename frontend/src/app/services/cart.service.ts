@@ -9,14 +9,13 @@ const STORAGE_KEY = 'maka_cart';
 export class CartService {
   private items$ = new BehaviorSubject<CartItem[]>(this.loadFromStorage());
 
-  // Nomes dos pratos tirados do carrinho porque saíram do cardápio (pausados ou inativos)
   private _removed = signal<string[]>([]);
   readonly removed$ = this._removed.asReadonly();
 
   constructor(private menu: MenuService) {
-    // Persiste no localStorage a cada mudança
+   
     this.items$.subscribe(items => this.saveToStorage(items));
-    // O carrinho fica salvo no navegador: sempre que o cardápio chega da API, confere se continua valendo
+    
     effect(() => {
       if (this.menu.loadedOk$()) this.syncWithMenu(this.menu.items$());
     }, { allowSignalWrites: true });
@@ -52,7 +51,7 @@ export class CartService {
 
   dismissRemoved(): void { this._removed.set([]); }
 
-  // Tira o que não está mais à venda e atualiza preço, nome e foto com os dados atuais do cardápio
+ 
   private syncWithMenu(menu: MenuItem[]): void {
     const cart = this.items$.value;
     if (cart.length === 0) return;
@@ -85,7 +84,7 @@ export class CartService {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
     } catch {
-      // storage quota exceeded — ignora silenciosamente
+      
     }
   }
 }

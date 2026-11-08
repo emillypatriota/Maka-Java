@@ -13,6 +13,7 @@ export const routes: Routes = [
       { path: 'checkout',  loadComponent: () => import('./pages/checkout/checkout.component').then(m => m.CheckoutComponent) },
       { path: 'confirmacao', loadComponent: () => import('./pages/confirmation/confirmation.component').then(m => m.ConfirmationComponent) },
       { path: 'meus-pedidos', loadComponent: () => import('./pages/my-orders/my-orders.component').then(m => m.MyOrdersComponent) },
+      { path: 'meus-pedidos/:id', loadComponent: () => import('./pages/my-orders/order-details.component').then(m => m.OrderDetailsComponent) },    
     ]
   },
 

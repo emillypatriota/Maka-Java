@@ -1,6 +1,6 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, timer } from 'rxjs';
+import { Observable, timer } from 'rxjs'; 
 import { switchMap, map, tap, shareReplay } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { Order } from '../models'; 
@@ -24,12 +24,18 @@ export class OrdersService {
   getOrders(): Order[] {
     return this._orders();
   }
-
-  async addOrder(orderData: any): Promise<Order> {
-    const req = this.http.post<Order>(`${environment.apiUrl}/pedidos`, orderData);
-    const res = await req.toPromise();
-    if (!res) throw new Error('Erro ao criar pedido');
-    return res;
+  
+  getAdminPedidos(): Observable<Order[]> {
+    return this.http.get<Order[]>(`${environment.apiUrl}/admin/pedidos`);
+  }
+  
+  getMyOrders(): Observable<Order[]> {
+    return this.http.get<Order[]>(`${environment.apiUrl}/pedidos/meus`);
+  }
+  
+  async addOrder(orderData: any): Promise<Order | undefined> {
+    
+    return this.http.post<Order>(`${environment.apiUrl}/pedidos`, orderData).toPromise();
   }
 
   async updateStatus(id: string, status: string): Promise<any> {
