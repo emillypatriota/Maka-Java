@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { AsyncPipe, NgIf } from '@angular/common';
 import { CartService } from '../../services/cart.service';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-main-layout',
@@ -46,6 +47,21 @@ import { CartService } from '../../services/cart.service';
 
           <!-- Right side actions -->
           <div style="display:flex;align-items:center;gap:.625rem">
+
+            <!-- Conta do cliente -->
+            <ng-container *ngIf="auth.user() as u; else entrar">
+              <span style="font-size:.78rem;color:rgba(255,255,255,.7)">Olá, {{ u.username.split(' ')[0] }}</span>
+              <button type="button" (click)="sair()"
+                      style="background:none;border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.8);border-radius:var(--r-lg);padding:.4rem .75rem;font-size:.75rem;cursor:pointer">
+                Sair
+              </button>
+            </ng-container>
+            <ng-template #entrar>
+              <a routerLink="/entrar"
+                 style="font-size:.78rem;font-weight:600;color:var(--brand-400);text-decoration:none;padding:.4rem .75rem">
+                Entrar
+              </a>
+            </ng-template>
 
             <!-- Cart button -->
             <div class="cart-btn-wrapper">
@@ -263,5 +279,10 @@ import { CartService } from '../../services/cart.service';
 export class MainLayoutComponent {
   cartCount$ = this.cart.count;
   menuOpen = false;
-  constructor(private cart: CartService) {}
+  constructor(private cart: CartService, public auth: AuthService) {}
+
+  async sair() {
+    await this.auth.logout();
+    window.location.assign('/');
+  }
 }

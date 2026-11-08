@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { roleGuard } from './guards/auth.guard';
+import { clientGuard, roleGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
   // ── Client area ───────────────────────────────────────────
@@ -10,9 +10,9 @@ export const routes: Routes = [
       { path: '',          loadComponent: () => import('./pages/home/home.component').then(m => m.HomeComponent) },
       { path: 'cardapio',  loadComponent: () => import('./pages/menu/menu.component').then(m => m.MenuComponent) },
       { path: 'carrinho',  loadComponent: () => import('./pages/cart/cart.component').then(m => m.CartComponent) },
-      { path: 'checkout',  loadComponent: () => import('./pages/checkout/checkout.component').then(m => m.CheckoutComponent) },
+      { path: 'checkout',  canActivate: [clientGuard], loadComponent: () => import('./pages/checkout/checkout.component').then(m => m.CheckoutComponent) },
       { path: 'confirmacao', loadComponent: () => import('./pages/confirmation/confirmation.component').then(m => m.ConfirmationComponent) },
-      { path: 'meus-pedidos', loadComponent: () => import('./pages/my-orders/my-orders.component').then(m => m.MyOrdersComponent) },
+      { path: 'meus-pedidos', canActivate: [clientGuard], loadComponent: () => import('./pages/my-orders/my-orders.component').then(m => m.MyOrdersComponent) },
     ]
   },
 
@@ -20,6 +20,8 @@ export const routes: Routes = [
   { path: 'portais', loadComponent: () => import('./pages/portals/portals.component').then(m => m.PortalsComponent) },
 
   // ── Auth pages ────────────────────────────────────────────
+  { path: 'entrar',   loadComponent: () => import('./pages/auth/client-login/client-login.component').then(m => m.ClientLoginComponent) },
+  { path: 'cadastro', loadComponent: () => import('./pages/auth/client-register/client-register.component').then(m => m.ClientRegisterComponent) },
   { path: 'login/manager',  loadComponent: () => import('./pages/auth/manager-login/manager-login.component').then(m => m.ManagerLoginComponent) },
   { path: 'login/kitchen',  loadComponent: () => import('./pages/auth/manager-login/manager-login.component').then(m => m.KitchenLoginComponent) },
   { path: 'login/delivery', loadComponent: () => import('./pages/auth/manager-login/manager-login.component').then(m => m.DeliveryLoginComponent) },
@@ -28,7 +30,7 @@ export const routes: Routes = [
   {
     path: 'gerente',
     loadComponent: () => import('./components/layout/employee-layout.component').then(m => m.EmployeeLayoutComponent),
-    canActivate: [roleGuard('manager')],
+    canActivate: [roleGuard('manager', 'admin')],
     children: [
       { path: '',          redirectTo: 'insights', pathMatch: 'full' },
       { path: 'dashboard', redirectTo: 'insights', pathMatch: 'full' },

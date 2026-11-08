@@ -38,6 +38,10 @@ public class Usuario {
     @Column(nullable = false)
     private Perfil perfil;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private StatusUsuario status = StatusUsuario.ATIVO;
+
     @Column(name = "criado_em", insertable = false, updatable = false)
     private LocalDateTime criadoEm;
 }

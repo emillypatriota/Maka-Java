@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -19,6 +20,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Value("${maka.cors.allowed-origins}")
@@ -30,6 +32,9 @@ public class SecurityConfig {
     @Autowired
     private JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 
+    @Autowired
+    private JwtAccessDeniedHandler jwtAccessDeniedHandler;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -37,16 +42,29 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
-                .exceptionHandling(eh -> eh.authenticationEntryPoint(jwtAuthenticationEntryPoint))
+                .exceptionHandling(eh -> eh
+                        .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                        .accessDeniedHandler(jwtAccessDeniedHandler))
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // Rotas inteiramente Públicas
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
-                        .requestMatchers("/api/auth/login").permitAll()
+                        .requestMatchers("/api/auth/login", "/api/auth/register").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/cardapio/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/pedidos").permitAll()
                         .requestMatchers("/api/auth/me").authenticated()
-                        .requestMatchers("/api/admin/**").hasRole("MANAGER")
+                        // Cliente logado (historico e acompanhamento do proprio pedido)
+                        .requestMatchers("/api/pedidos/meus", "/api/pedidos/*/status").authenticated()
+
+                        // RBAC (RF-043). Ordem importa: a regra mais especifica vem primeiro.
+                        // Usuarios internos: so ADMIN (RF-041)
+                        .requestMatchers("/api/admin/usuarios/**").hasRole("ADMIN")
+                        // Painel de pedidos: equipe operacional (cada acao e refinada com @PreAuthorize no PedidoController)
+                        .requestMatchers("/api/admin/pedidos/**").hasAnyRole("ADMIN", "MANAGER", "KITCHEN", "DELIVERY")
+                        // Insights (faturamento etc.): so gerencia
+                        .requestMatchers("/api/insights/**").hasAnyRole("ADMIN", "MANAGER")
+                        // Resto da administracao (cardapio, ficha tecnica, ingredientes, fornecedores...)
+                        .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "MANAGER")
 
                         // TODO (Sprint 2, avisar o grupo 2 dias antes): trocar o permitAll abaixo por
                         // .requestMatchers("/api/funcionarios/**").hasRole("MANAGER")

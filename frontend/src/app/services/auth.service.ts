@@ -60,6 +60,16 @@ export class AuthService {
     return res.user;
   }
 
+  // Cadastro público de cliente (POST /auth/register já devolve o token: o cliente entra logado)
+  async register(username: string, email: string, password: string): Promise<AuthUser> {
+    const res = await firstValueFrom(
+      this.http.post<LoginResponse>(`${environment.apiUrl}/auth/register`, { username, email, password })
+    );
+    saveToken(res.token);
+    this._user.set(res.user);
+    return res.user;
+  }
+
   async logout(): Promise<void> {
     clearToken();
     this._user.set(null);

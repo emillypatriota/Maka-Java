@@ -234,7 +234,9 @@ function makeLoginComponent(
       this.loading = true;
       try {
         const user = await this.auth.loginWithEmail(this.email, this.password);
-        if (user.role !== role) {
+        // O portal do gerente também aceita o ADMIN
+        const allowed: UserRole[] = role === 'manager' ? ['manager', 'admin'] : [role];
+        if (!allowed.includes(user.role)) {
           await this.auth.logout();
           throw new Error('Esta conta não tem acesso a este portal.');
         }

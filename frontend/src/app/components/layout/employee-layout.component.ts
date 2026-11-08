@@ -300,8 +300,8 @@ export class EmployeeLayoutComponent implements OnInit, OnDestroy {
     this.initials      = this.userName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
     this.currentPage.set(this.resolvePageTitle());
 
-    if (u.role === 'manager') {
-      this.roleLabel      = 'Gerente Geral';
+    if (u.role === 'manager' || u.role === 'admin') {
+      this.roleLabel      = u.role === 'admin' ? 'Administrador' : 'Gerente Geral';
       this.roleSubtitle   = 'ADMIN';
       this.dashboardRoute = '/gerente/insights';
       this.buildManagerNav();
