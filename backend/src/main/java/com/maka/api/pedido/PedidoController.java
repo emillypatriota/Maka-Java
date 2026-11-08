@@ -1,5 +1,6 @@
 package com.maka.api.pedido;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import com.maka.api.model.StatusPedido;
 import com.maka.api.pedido.dto.PedidoRequestDTO;
 import com.maka.api.pedido.dto.PedidoResponseDTO;
@@ -20,6 +21,7 @@ import java.util.Map;
 public class PedidoController {
 
     // (P1) POST /api/pedidos (cliente logado cria o pedido)
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','CLIENTE')")
     @PostMapping("/pedidos")
     public ResponseEntity<PedidoResponseDTO> criarPedido(@RequestBody @Valid PedidoRequestDTO request) {
         // TODO: Implementar lógica no PedidoService (@Transactional, cálculo no servidor, baixa de estoque)
@@ -30,6 +32,7 @@ public class PedidoController {
     }
 
     // (P1) GET /api/pedidos/meus (histórico de pedidos do cliente logado)
+    @PreAuthorize("hasRole('CLIENTE')")
     @GetMapping("/pedidos/meus")
     public ResponseEntity<List<PedidoResponseDTO>> listarMeusPedidos() {
         // TODO: Chamar o PedidoService buscando pelo cliente logado
@@ -37,6 +40,7 @@ public class PedidoController {
     }
 
     // (P1) GET /api/pedidos/{id}/status (cliente acompanha status)
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/pedidos/{id}/status")
     public ResponseEntity<Map<String, String>> buscarStatusPedido(@PathVariable Long id) {
         // TODO: Retornar status atual
@@ -44,6 +48,7 @@ public class PedidoController {
     }
 
     // (P1) GET /api/admin/pedidos (painel da cozinha/gerência, com filtros e paginação)
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','KITCHEN','DELIVERY')")
     @GetMapping("/admin/pedidos")
     public ResponseEntity<Page<PedidoResponseDTO>> listarPedidosAdmin(
             @RequestParam(required = false) StatusPedido status,
@@ -53,6 +58,7 @@ public class PedidoController {
     }
 
     // (P1) PATCH /api/admin/pedidos/{id}/status (funcionários atualizam o status)
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','KITCHEN','DELIVERY')")
     @PatchMapping("/admin/pedidos/{id}/status")
     public ResponseEntity<PedidoResponseDTO> atualizarStatus(
             @PathVariable Long id,
@@ -67,6 +73,7 @@ public class PedidoController {
     }
     
     // (Extra) GET /api/pedidos (endpoint antigo para os painéis, mantendo compatibilidade)
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','KITCHEN','DELIVERY')")
     @GetMapping("/pedidos")
     public ResponseEntity<List<PedidoResponseDTO>> listarPedidosAntigo() {
         return ResponseEntity.ok(new ArrayList<>());

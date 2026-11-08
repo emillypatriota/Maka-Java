@@ -1,5 +1,6 @@
 package com.maka.api.fichatecnica;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import jakarta.validation.Valid;
 
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,6 +15,7 @@ import com.maka.api.fichatecnica.dto.FichaTecnicaResponse;
 
 // Ficha técnica de um prato (MANAGER, pela regra /api/admin/** do SecurityConfig)
 @RestController
+@PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
 @RequestMapping("/api/admin/pratos/{produtoId}/ficha-tecnica")
 public class FichaTecnicaController {
 

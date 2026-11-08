@@ -1,5 +1,6 @@
 package com.maka.api.categoria;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -26,6 +27,7 @@ import com.maka.api.categoria.dto.CategoriaResponse;
 
 // Gestão de categorias (MANAGER, pela regra /api/admin/** do SecurityConfig)
 @RestController
+@PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
 @Validated
 @RequestMapping("/api/admin/categorias")
 public class AdminCategoriaController {
@@ -39,7 +41,7 @@ public class AdminCategoriaController {
     @GetMapping
     public Page<CategoriaResponse> listar(
             @RequestParam(defaultValue = "0") @Min(0) int page,
-            @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size) {
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         return categoriaService.listar(PageRequest.of(page, size, Sort.by("ordem", "id")));
     }
 

@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { roleGuard } from './guards/auth.guard';
+import { authGuard, roleGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
   // ── Client area ───────────────────────────────────────────
@@ -10,9 +10,13 @@ export const routes: Routes = [
       { path: '',          loadComponent: () => import('./pages/home/home.component').then(m => m.HomeComponent) },
       { path: 'cardapio',  loadComponent: () => import('./pages/menu/menu.component').then(m => m.MenuComponent) },
       { path: 'carrinho',  loadComponent: () => import('./pages/cart/cart.component').then(m => m.CartComponent) },
-      { path: 'checkout',  loadComponent: () => import('./pages/checkout/checkout.component').then(m => m.CheckoutComponent) },
-      { path: 'confirmacao', loadComponent: () => import('./pages/confirmation/confirmation.component').then(m => m.ConfirmationComponent) },
-      { path: 'meus-pedidos', loadComponent: () => import('./pages/my-orders/my-orders.component').then(m => m.MyOrdersComponent) },
+      // Checkout, confirmação e meus pedidos exigem cliente logado (sem login vai para /entrar)
+      { path: 'checkout',  canActivate: [authGuard], loadComponent: () => import('./pages/checkout/checkout.component').then(m => m.CheckoutComponent) },
+      { path: 'confirmacao', canActivate: [authGuard], loadComponent: () => import('./pages/confirmation/confirmation.component').then(m => m.ConfirmationComponent) },
+      { path: 'meus-pedidos', canActivate: [authGuard], loadComponent: () => import('./pages/my-orders/my-orders.component').then(m => m.MyOrdersComponent) },
+      // Login e cadastro do cliente
+      { path: 'entrar',    loadComponent: () => import('./pages/auth/client-login/client-login.component').then(m => m.ClientLoginComponent) },
+      { path: 'cadastro',  loadComponent: () => import('./pages/auth/register/register.component').then(m => m.RegisterComponent) },
     ]
   },
 

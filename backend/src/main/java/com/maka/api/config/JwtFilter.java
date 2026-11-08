@@ -1,6 +1,7 @@
 package com.maka.api.config;
 
 import com.maka.api.auth.JwtService;
+import com.maka.api.auth.PerfilRoles;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,9 +26,13 @@ public class JwtFilter extends OncePerRequestFilter {
             String token = authHeader.substring(7);
             if (jwtService.isTokenValid(token)) {
                 String email = jwtService.extractEmail(token);
-                String role = jwtService.extractRole(token);
-                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(email, null, Collections.singletonList(new SimpleGrantedAuthority(role)));
-                SecurityContextHolder.getContext().setAuthentication(auth);
+                // Só aceita claim com perfil conhecido do enum Perfil (ROLE_MANAGER, ROLE_ADMIN, ...)
+                String role = PerfilRoles.authorityDoClaim(jwtService.extractRole(token));
+                // Token assinado mas sem e-mail/perfil reconhecido: segue anônimo (a rota decide: 401)
+                if (email != null && role != null) {
+                    UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(email, null, Collections.singletonList(new SimpleGrantedAuthority(role)));
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                }
             }
         }
         filterChain.doFilter(request, response);
