@@ -2,6 +2,8 @@
 -- Só adiciona coisas: nada do que já existe é renomeado ou removido,
 -- então o código dos outros times continua funcionando.
 -- Saldo de estoque de um ingrediente = soma das ENTRADA e ESTORNO - soma das SAIDA.
+-- Obs.: coluna nova e constraint dela ficam em ALTER TABLE separados
+-- (o TiDB não aceita os dois no mesmo comando; o MySQL aceita os dois jeitos).
 
 -- Perfis novos: ADMIN e CLIENTE (MANAGER = gerente, KITCHEN = cozinheiro).
 ALTER TABLE usuario
@@ -24,7 +26,9 @@ CREATE TABLE categoria (
 -- (categoria texto, ativo) até a Gestão migrar para categoria_id e status.
 ALTER TABLE produto
   ADD COLUMN categoria_id BIGINT NULL,
-  ADD COLUMN status ENUM('ATIVO','INATIVO','PAUSADO') NOT NULL DEFAULT 'ATIVO',
+  ADD COLUMN status ENUM('ATIVO','INATIVO','PAUSADO') NOT NULL DEFAULT 'ATIVO';
+
+ALTER TABLE produto
   ADD CONSTRAINT fk_produto_categoria FOREIGN KEY (categoria_id) REFERENCES categoria(id);
 
 -- ingrediente (criada pela Insights na V1) ganha as colunas do SRS.
@@ -33,7 +37,9 @@ ALTER TABLE ingrediente
   ADD COLUMN sku            VARCHAR(40) NULL,
   ADD COLUMN estoque_minimo DECIMAL(12,3) NOT NULL DEFAULT 0,
   ADD COLUMN status         ENUM('ATIVO','INATIVO') NOT NULL DEFAULT 'ATIVO',
-  ADD COLUMN created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  ADD COLUMN created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE ingrediente
   ADD CONSTRAINT uk_ingrediente_sku UNIQUE (sku);
 
 CREATE TABLE ficha_tecnica (
@@ -137,6 +143,10 @@ CREATE TABLE estoque_movimentacao (
 
 -- Pedido feito por cliente logado (null = pedido antigo, sem login).
 ALTER TABLE pedido
-  ADD COLUMN cliente_id BIGINT NULL,
-  ADD CONSTRAINT fk_pedido_cliente FOREIGN KEY (cliente_id) REFERENCES usuario(id),
+  ADD COLUMN cliente_id BIGINT NULL;
+
+ALTER TABLE pedido
+  ADD CONSTRAINT fk_pedido_cliente FOREIGN KEY (cliente_id) REFERENCES usuario(id);
+
+ALTER TABLE pedido
   ADD INDEX idx_pedido_cliente (cliente_id);
