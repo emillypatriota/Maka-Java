@@ -11,7 +11,8 @@ Frontend Angular 17 + API REST em Java 17 / Spring Boot 3.5 + MySQL 8, com login
 | Frontend (Vercel) | https://maka-delivery.vercel.app |
 | API (Render) | https://maka-api.onrender.com |
 | Swagger | https://maka-api.onrender.com/swagger-ui.html |
-| Banco | MySQL 8 no Aiven |
+| Banco | MySQL 8 compatível (TiDB Cloud) |
+
 
 Os planos gratuitos hibernam quando ficam parados. Na primeira visita, abra o cardápio e aguarde de 30 a 60 segundos até a API acordar.
 
