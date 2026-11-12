@@ -7,7 +7,7 @@ export const routes: Routes = [
     path: '',
     loadComponent: () => import('./components/layout/main-layout.component').then(m => m.MainLayoutComponent),
     children: [
-      { path: '',          loadComponent: () => import('./pages/home/home.component').then(m => m.HomeComponent) },
+      { path: '',         loadComponent: () => import('./pages/home/home.component').then(m => m.HomeComponent) },
       { path: 'cardapio',  loadComponent: () => import('./pages/menu/menu.component').then(m => m.MenuComponent) },
       { path: 'carrinho',  loadComponent: () => import('./pages/cart/cart.component').then(m => m.CartComponent) },
       // Checkout, confirmação e meus pedidos exigem cliente logado (sem login vai para /entrar)
@@ -43,6 +43,9 @@ export const routes: Routes = [
       { path: 'estoque', loadComponent: () => import('./pages/employee/stock/stock-management.component').then(m => m.StockManagementComponent) },
       { path: 'cozinha',   loadComponent: () => import('./pages/employee/kitchen/kitchen-dashboard.component').then(m => m.KitchenDashboardComponent) },
       { path: 'entregas',  loadComponent: () => import('./pages/delivery/dashboard/delivery-dashboard.component').then(m => m.DeliveryDashboardComponent) },
+      // Adicionando explicitamente as rotas solicitadas na área administrativa
+      { path: 'admin/cozinha', loadComponent: () => import('./pages/employee/kitchen/kitchen-dashboard.component').then(m => m.KitchenDashboardComponent) },
+      { path: 'admin/entregas', loadComponent: () => import('./pages/delivery/dashboard/delivery-dashboard.component').then(m => m.DeliveryDashboardComponent) },
       { path: 'insights',      loadComponent: () => import('./pages/employee/insights/insights-dashboard.component').then(m => m.InsightsDashboardComponent) },
       { path: 'funcionarios',  loadComponent: () => import('./pages/employee/staff/staff-management.component').then(m => m.StaffManagementComponent) },
     ]

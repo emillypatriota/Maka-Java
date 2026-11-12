@@ -103,12 +103,18 @@ export class KitchenDashboardComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    this.sub = this.ordersService.orders.subscribe({
+    
+    this.sub = this.ordersService.getAdminPedidos().subscribe({
       next: orders => {
-        this.allOrders = orders;
-        this.pending   = orders.filter(o => o.status === 'pending');
-        this.preparing = orders.filter(o => o.status === 'preparing');
-        this.ready     = orders.filter(o => o.status === 'ready');
+        
+        const parsedOrders = orders.map(o => ({
+          ...o,
+          createdAt: o.createdAt ? new Date(o.createdAt) : new Date()
+        }));
+        this.allOrders = parsedOrders;
+        this.pending   = parsedOrders.filter(o => o.status === 'pending');
+        this.preparing = parsedOrders.filter(o => o.status === 'preparing');
+        this.ready     = parsedOrders.filter(o => o.status === 'ready');
       },
       error: err => console.error('[Kitchen] orders error:', err),
     });

@@ -149,11 +149,16 @@ export class DeliveryDashboardComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.deliveryUid = this.auth.getUser()?.uid ?? 'entregador-1';
     
-    this.sub = this.ordersService.orders.subscribe({
+    
+    this.sub = this.ordersService.getAdminPedidos().subscribe({
       next: orders => {
-        this.available = orders.filter(o => o.status === 'ready' && !o.deliveryPersonId && o.orderType === 'delivery');
-        this.active = orders.filter(o => o.status === 'delivering' && o.orderType === 'delivery');
-        this.completed = orders.filter(o => o.status === 'delivered' && o.orderType === 'delivery');
+        const parsedOrders = orders.map(o => ({
+          ...o,
+          createdAt: o.createdAt ? new Date(o.createdAt) : new Date()
+        }));
+        this.available = parsedOrders.filter(o => o.status === 'ready' && !o.deliveryPersonId && o.orderType === 'delivery');
+        this.active = parsedOrders.filter(o => o.status === 'delivering' && o.orderType === 'delivery');
+        this.completed = parsedOrders.filter(o => o.status === 'delivered' && o.orderType === 'delivery');
       },
       error: err => console.error('[Delivery] orders error:', err),
     });
