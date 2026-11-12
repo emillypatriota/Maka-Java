@@ -94,7 +94,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/insights/**").hasAnyRole(GERENCIA)
                         // Só o ADMIN cria usuários internos (gerente, cozinheiro...) — RF-041
                         .requestMatchers("/api/admin/usuarios", "/api/admin/usuarios/**").hasRole("ADMIN")
-                        // Todo o resto de /api/admin (pratos, ingredientes, fornecedores, estoque, dashboard...)
+                        // Todo o resto de /api/admin (pratos, ingredientes, estoque, dashboard...), incluindo
+                        // fornecedores e compras do Bloco 7: cozinheiro e entregador ficam de fora (RF-043)
                         .requestMatchers("/api/admin/**").hasAnyRole(GERENCIA)
 
                         // ── Padrão: precisa estar logado ────────────────────────────
