@@ -36,6 +36,32 @@ public final class PerfilRoles {
     }
 
     /**
+     * Caminho inverso do frontRole: "manager" -> MANAGER, "client" -> CLIENTE.
+     * Aceita também o nome do enum ("MANAGER", "cliente"). Devolve null se não reconhecer.
+     */
+    public static Perfil perfilDoFrontRole(String role) {
+        if (role == null || role.isBlank()) {
+            return null;
+        }
+        String r = role.trim().toLowerCase();
+        switch (r) {
+            case "admin":
+                return Perfil.ADMIN;
+            case "manager":
+                return Perfil.MANAGER;
+            case "kitchen":
+                return Perfil.KITCHEN;
+            case "delivery":
+                return Perfil.DELIVERY;
+            case "client":
+            case "cliente":
+                return Perfil.CLIENTE;
+            default:
+                return null;
+        }
+    }
+
+    /**
      * Lê o claim "role" de um token e devolve a authority, ou null se o claim estiver
      * ausente ou não for um perfil conhecido (aí o JwtFilter deixa a requisição anônima).
      */

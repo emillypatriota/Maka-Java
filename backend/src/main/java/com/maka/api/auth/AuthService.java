@@ -4,6 +4,7 @@ import com.maka.api.auth.dto.LoginRequest;
 import com.maka.api.auth.dto.LoginResponse;
 import com.maka.api.auth.dto.RegisterRequest;
 import com.maka.api.model.Perfil;
+import com.maka.api.model.StatusUsuario;
 import com.maka.api.model.Usuario;
 import com.maka.api.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,6 +37,12 @@ public class AuthService {
             throw new BadCredentialsException("Usuário ou senha inválidos");
         }
 
+        // RN06: usuário desativado pelo ADMIN não entra. Mesma mensagem da senha errada
+        // de propósito, para não revelar quais e-mails existem.
+        if (usuario.getStatus() == StatusUsuario.INATIVO) {
+            throw new BadCredentialsException("Usuário ou senha inválidos");
+        }
+
         return montarResposta(usuario);
     }
 
@@ -64,9 +71,11 @@ public class AuthService {
         return montarResposta(usuario);
     }
 
-    // Usado pelo GET /api/auth/me: devolve o usuario do token no mesmo formato do login
+    // Usado pelo GET /api/auth/me: devolve o usuario do token no mesmo formato do login.
+    // Usuário desativado depois de logar perde a sessão na próxima recarga (401 -> tela de login).
     public LoginResponse.UserDto buscarPorEmail(String email) {
         Usuario usuario = usuarioRepository.findByEmail(email)
+                .filter(u -> u.getStatus() != StatusUsuario.INATIVO)
                 .orElseThrow(() -> new BadCredentialsException("Usuário não encontrado"));
         return paraUserDto(usuario);
     }
