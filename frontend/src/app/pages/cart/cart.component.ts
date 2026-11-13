@@ -37,7 +37,7 @@ import { combineLatest, map } from 'rxjs';
             <p style="color:var(--stone-500)">Revise os itens antes de finalizar</p>
           </div>
 
-          <div style="display:grid;grid-template-columns:1fr 380px;gap:2rem;align-items:start" class="cart-grid">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:2rem;align-items:start" class="cart-grid">
             <div>
               <div *ngFor="let item of (items$ | async)" class="cart-item animate-fade-in">
                 <img class="cart-item-img" [src]="item.image" [alt]="item.name">
@@ -117,7 +117,7 @@ import { combineLatest, map } from 'rxjs';
     </div>
   `,
   styles: [`
-    @media(max-width:900px){.cart-grid{grid-template-columns:1fr !important}}
+    @media(max-width:900px){.cart-grid{grid-template-columns:minmax(0,1fr) !important}}
     .cart-removed { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem; padding:.875rem 1rem; border-radius:var(--r-lg); background:#fffbeb; border:1.5px solid #fcd34d; color:#92400e; font-size:.9rem; }
   `]
 })

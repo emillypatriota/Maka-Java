@@ -47,7 +47,7 @@ public class AdminFuncionarioController {
             @RequestParam(required = false) String cargo,
             @RequestParam(required = false) String busca,
             @RequestParam(defaultValue = "0") @Min(0) int page,
-            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+            @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size) {
         return funcionarioService.listar(cargo, busca, PageRequest.of(page, size, Sort.by("nome")));
     }
 
