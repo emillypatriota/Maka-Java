@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CurrencyPipe, NgFor, NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Ingrediente, IngredienteInput, IngredienteService } from '../../../services/ingrediente.service';
 import { ToastService } from '../../../services/toast.service';
@@ -8,7 +9,7 @@ import { ToastService } from '../../../services/toast.service';
 @Component({
   selector: 'app-ingredients-management',
   standalone: true,
-  imports: [CurrencyPipe, FormsModule, NgFor, NgIf],
+  imports: [CurrencyPipe, FormsModule, NgFor, NgIf, RouterLink],
   template: `
     <div style="max-width:1100px;margin:0 auto;padding:0 1.5rem 2rem">
       <header style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:2rem"
@@ -65,6 +66,7 @@ import { ToastService } from '../../../services/toast.service';
                 </td>
                 <td style="padding:1rem;text-align:right;white-space:nowrap">
                   <button class="btn btn-ghost btn-sm" type="button" (click)="abrirEdicao(ingrediente)">Editar</button>
+                  <a class="btn btn-ghost btn-sm" [routerLink]="['/gerente/ingredientes', ingrediente.id, 'historico']">Preços</a>
                   <button *ngIf="ingrediente.status === 'ATIVO'" class="btn btn-ghost btn-sm" type="button" [disabled]="excluindoId === ingrediente.id"
                           (click)="excluir(ingrediente)">
                     {{ excluindoId === ingrediente.id ? 'Desativando...' : 'Desativar' }}

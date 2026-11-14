@@ -40,6 +40,7 @@ export const routes: Routes = [
       { path: 'pedidos',   loadComponent: () => import('./pages/employee/orders/orders-management.component').then(m => m.OrdersManagementComponent) },
       { path: 'cardapio',  loadComponent: () => import('./pages/employee/menu-management/menu-management.component').then(m => m.MenuManagementComponent) },
       { path: 'ingredientes', loadComponent: () => import('./pages/employee/ingredients/ingredients-management.component').then(m => m.IngredientsManagementComponent) },
+      { path: 'ingredientes/:id/historico', loadComponent: () => import('./pages/employee/ingredients/price-history.component').then(m => m.PriceHistoryComponent) },
       { path: 'estoque', loadComponent: () => import('./pages/employee/stock/stock-management.component').then(m => m.StockManagementComponent) },
       { path: 'cozinha',   loadComponent: () => import('./pages/employee/kitchen/kitchen-dashboard.component').then(m => m.KitchenDashboardComponent) },
       { path: 'entregas',  loadComponent: () => import('./pages/delivery/dashboard/delivery-dashboard.component').then(m => m.DeliveryDashboardComponent) },
