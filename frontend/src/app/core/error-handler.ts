@@ -10,25 +10,21 @@ export class GlobalErrorHandler implements ErrorHandler {
     const message = this.extractMessage(error);
     console.error('[GlobalErrorHandler]', error);
 
-    // Ignora erros de chunk load (lazy loading em browser antigo) — recarrega automaticamente
     if (message.includes('ChunkLoadError') || message.includes('Loading chunk')) {
       window.location.reload();
       return;
     }
-
-    // Erros de rede mostram feedback amigável
+    
     if (message.includes('Failed to fetch') || message.includes('NetworkError')) {
       this.zone.run(() => this.toast.show('Sem conexão com a internet. Verifique sua rede.', 'error'));
       return;
     }
-
-    // Erros de Firestore permission
+    
     if (message.includes('permission-denied') || message.includes('Missing or insufficient permissions')) {
       this.zone.run(() => this.toast.show('Permissão negada. Faça login novamente.', 'error'));
       return;
     }
 
-    // Em desenvolvimento, não engole o erro
     if (!this.isProduction()) {
       throw error;
     }
