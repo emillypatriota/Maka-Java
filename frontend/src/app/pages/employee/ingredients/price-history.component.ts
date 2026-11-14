@@ -104,14 +104,14 @@ export class PriceHistoryComponent implements AfterViewInit, OnDestroy {
             },
             y: {
               title: { display: true, text: 'Preço (R$)' },
-              ticks: { callback: v => 'R$ ' + Number(v).toFixed(2) },
+              ticks: { callback: v => 'R$ ' + Number(v).toFixed(3) },
             },
           },
           plugins: {
             tooltip: {
               callbacks: {
                 title: items => new Date(items[0].parsed.x as number).toLocaleDateString('pt-BR'),
-                label: item => `${item.dataset.label}: R$ ${Number(item.parsed.y).toFixed(2)}`,
+                label: item => `${item.dataset.label}: R$ ${Number(item.parsed.y).toFixed(4)}`,
               },
             },
           },
