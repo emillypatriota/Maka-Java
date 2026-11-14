@@ -80,7 +80,7 @@ Em produção, todas são configuradas no painel do Render. Nenhum segredo vai p
 
 ![DER](docs/DER.png)
 
-O schema é criado e versionado pelo Flyway (`V1` a `V5`). O Hibernate só valida (`ddl-auto=validate`). Mudança no banco é sempre uma migração nova; nunca se edita uma migração já aplicada.
+O schema é criado e versionado pelo Flyway (`V1` a `V6`). O Hibernate só valida (`ddl-auto=validate`). Mudança no banco é sempre uma migração nova; nunca se edita uma migração já aplicada.
 
 ## Funcionalidades
 
@@ -88,6 +88,7 @@ O schema é criado e versionado pelo Flyway (`V1` a `V5`). O Hibernate só valid
 - **Gestão:** CRUD de pratos, categorias e funcionários, com paginação e exclusão lógica.
 - **Ficha técnica e custo:** ingredientes por prato, fator de correção, food cost com faixas verde, amarela e vermelha, e aviso acima de 35%.
 - **Ingredientes:** CRUD paginado em `/gerente/ingredientes`, com SKU, status e estoque mínimo; exclusão lógica por status `INATIVO` (RN06).
+- **Histórico de preços (RF-026):** gráfico de linhas com a evolução do preço de cada ingrediente por fornecedor, aberto pelo botão **Preços** da lista de ingredientes (`/gerente/ingredientes/:id/historico`).
 - **Estoque:** entradas e saídas manuais, saldo calculado pelas movimentações, alertas no menu para saldo no mínimo ou abaixo e histórico paginado em `/gerente/estoque`.
 - **Insights:** indicadores e gráficos Chart.js a partir de `GET /api/insights/resumo`.
 - **Autenticação:** login com JWT de 8 horas e senhas em BCrypt; as rotas `/api/admin/**` exigem o perfil gerente.
@@ -100,6 +101,7 @@ O schema é criado e versionado pelo Flyway (`V1` a `V5`). O Hibernate só valid
 | `POST` | `/api/admin/ingredientes` | Cria ingrediente |
 | `PUT` | `/api/admin/ingredientes/{id}` | Atualiza ingrediente |
 | `DELETE` | `/api/admin/ingredientes/{id}` | Inativa logicamente o ingrediente (RN06) |
+| `GET` | `/api/admin/ingredientes/{id}/historico-preco` | Série de preços por fornecedor, em ordem de data (filtro opcional `fornecedorId`) |
 
 O corpo de `POST` e `PUT` usa `nome`, `unidadeMedida`, `custoUnitario`, `sku`, `estoqueMinimo` e `status`. `sku`, `estoqueMinimo` e `status` são opcionais na API; o mínimo padrão é zero e o status padrão é `ATIVO`.
 
@@ -113,6 +115,16 @@ O corpo de `POST` e `PUT` usa `nome`, `unidadeMedida`, `custoUnitario`, `sku`, `
   "status": "ATIVO"
 }
 ```
+
+A resposta do histórico de preços é uma lista com um ponto por registro:
+
+```json
+[
+  { "fornecedorId": 1, "fornecedor": "Casa de Carnes Prime Ltda", "preco": 0.0864, "registradoEm": "2026-10-17T03:10:00" }
+]
+```
+
+A migração `V6` insere preços de exemplo dos últimos 28 dias para que o gráfico tenha dados na demonstração.
 
 ### Contrato de estoque
 
