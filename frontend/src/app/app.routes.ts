@@ -46,6 +46,11 @@ export const routes: Routes = [
       { path: 'entregas',  loadComponent: () => import('./pages/delivery/dashboard/delivery-dashboard.component').then(m => m.DeliveryDashboardComponent) },
       { path: 'insights',      loadComponent: () => import('./pages/employee/insights/insights-dashboard.component').then(m => m.InsightsDashboardComponent) },
       { path: 'funcionarios',  loadComponent: () => import('./pages/employee/staff/staff-management.component').then(m => m.StaffManagementComponent) },
+      // Bloco 7 (Auth): fornecedores, catálogo, cotação e pedidos de compra. Gerente e admin (RF-043)
+      { path: 'fornecedores',  loadComponent: () => import('./pages/employee/suppliers/suppliers-management.component').then(m => m.SuppliersManagementComponent) },
+      { path: 'compras',       loadComponent: () => import('./pages/employee/purchases/purchases-management.component').then(m => m.PurchasesManagementComponent) },
+      // RF-041: usuários internos, só o ADMIN (o gerente volta para a casa dele)
+      { path: 'usuarios',      canActivate: [roleGuard('admin')], loadComponent: () => import('./pages/employee/users/users-management.component').then(m => m.UsersManagementComponent) },
     ]
   },
 

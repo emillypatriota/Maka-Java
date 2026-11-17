@@ -345,6 +345,9 @@ export class EmployeeLayoutComponent implements OnInit, OnDestroy {
     if (url.includes('entregas'))     return 'Entregas';
     if (url.includes('insights'))     return 'Insights';
     if (url.includes('funcionarios')) return 'Funcionários';
+    if (url.includes('fornecedores')) return 'Fornecedores';
+    if (url.includes('compras'))      return 'Compras';
+    if (url.includes('usuarios'))     return 'Usuários';
     if (url.includes('painel'))       return 'Painel da Cozinha';
     return 'Dashboard';
   }
@@ -394,6 +397,21 @@ export class EmployeeLayoutComponent implements OnInit, OnDestroy {
         ]
       },
       {
+        label: 'SUPRIMENTOS',
+        items: [
+          {
+            label: 'Fornecedores',
+            route: '/gerente/fornecedores',
+            icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6M9 10h.01M15 10h.01"/></svg>`,
+          },
+          {
+            label: 'Compras',
+            route: '/gerente/compras',
+            icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>`,
+          },
+        ]
+      },
+      {
         label: 'EQUIPE',
         items: [
           {
@@ -401,6 +419,12 @@ export class EmployeeLayoutComponent implements OnInit, OnDestroy {
             route: '/gerente/funcionarios',
             icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>`,
           },
+          // RF-041: só o ADMIN vê (a rota e a API também barram o gerente)
+          ...(this.role === 'admin' ? [{
+            label: 'Usuários',
+            route: '/gerente/usuarios',
+            icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0M19 8l1.5 1.5L23 7"/></svg>`,
+          }] : []),
         ]
       },
       {

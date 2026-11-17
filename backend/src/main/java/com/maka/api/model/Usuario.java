@@ -38,6 +38,11 @@ public class Usuario {
     @Column(nullable = false)
     private Perfil perfil;
 
+    // RN06: exclusão lógica. INATIVO não consegue mais fazer login.
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private StatusUsuario status = StatusUsuario.ATIVO;
+
     @Column(name = "criado_em", insertable = false, updatable = false)
     private LocalDateTime criadoEm;
 }

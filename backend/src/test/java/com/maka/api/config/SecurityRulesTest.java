@@ -91,10 +91,23 @@ public class SecurityRulesTest {
         r.add(rota(HttpMethod.PATCH, "/api/admin/funcionarios/1/status", GERENCIA));
         r.add(rota(HttpMethod.PATCH, "/api/admin/pedidos/1/cancelar", PAINEL));
         r.add(rota(HttpMethod.GET, "/api/admin/fornecedores", GERENCIA));
+        // Bloco 7 (fornecedores e compras): só gerência, cozinheiro e entregador não entram (RF-043)
+        r.add(rota(HttpMethod.POST, "/api/admin/fornecedores", GERENCIA));
+        r.add(rota(HttpMethod.GET, "/api/admin/fornecedores/1/catalogo", GERENCIA));
+        r.add(rota(HttpMethod.POST, "/api/admin/fornecedores/1/catalogo", GERENCIA));
+        r.add(rota(HttpMethod.GET, "/api/admin/compras", GERENCIA));
+        r.add(rota(HttpMethod.POST, "/api/admin/compras", GERENCIA));
+        r.add(rota(HttpMethod.GET, "/api/admin/compras/cotacao", GERENCIA));
+        r.add(rota(HttpMethod.PATCH, "/api/admin/compras/1/enviar", GERENCIA));
+        r.add(rota(HttpMethod.PATCH, "/api/admin/compras/1/receber", GERENCIA));
+        r.add(rota(HttpMethod.PATCH, "/api/admin/compras/1/cancelar", GERENCIA));
         r.add(rota(HttpMethod.POST, "/api/admin/pratos", GERENCIA));
         // Só admin
         r.add(rota(HttpMethod.GET, "/api/admin/usuarios", List.of("ADMIN")));
         r.add(rota(HttpMethod.POST, "/api/admin/usuarios", List.of("ADMIN")));
+        r.add(rota(HttpMethod.PUT, "/api/admin/usuarios/1", List.of("ADMIN")));
+        r.add(rota(HttpMethod.PATCH, "/api/admin/usuarios/1/status", List.of("ADMIN")));
+        r.add(rota(HttpMethod.DELETE, "/api/admin/usuarios/1", List.of("ADMIN")));
         return r;
     }
 
