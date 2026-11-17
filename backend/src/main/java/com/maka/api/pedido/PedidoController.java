@@ -21,25 +21,20 @@ public class PedidoController {
 
     private final PedidoService pedidoService;
 
-    // Construtor explícito (sem Lombok) para injeção de dependência
     public PedidoController(PedidoService pedidoService) {
         this.pedidoService = pedidoService;
     }
 
-    // (P1) POST /api/pedidos (cliente logado cria o pedido)
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','CLIENTE')")
     @PostMapping("/pedidos")
     public ResponseEntity<PedidoResponseDTO> criarPedido(
             @RequestBody @Valid PedidoRequestDTO request, 
             Principal principal) {
-        
-        // Extrai o e-mail do token JWT via Principal
         String emailLogado = principal != null ? principal.getName() : null;
         PedidoResponseDTO response = pedidoService.criarPedido(request, emailLogado);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    // (P1) GET /api/pedidos/meus (histórico de pedidos do cliente logado)
     @PreAuthorize("hasRole('CLIENTE')")
     @GetMapping("/pedidos/meus")
     public ResponseEntity<List<PedidoResponseDTO>> listarMeusPedidos(Principal principal) {
@@ -47,15 +42,13 @@ public class PedidoController {
         return ResponseEntity.ok(pedidoService.listarMeusPedidos(emailLogado));
     }
 
-    // (P1) GET /api/pedidos/{id}/status (cliente acompanha status)
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/pedidos/{id}/status")
-    public ResponseEntity<Map<String, String>> buscarStatusPedido(@PathVariable Long id, Principal principal) {
+    public ResponseEntity> buscarStatusPedido(@PathVariable Long id, Principal principal) {
         String emailLogado = principal != null ? principal.getName() : null;
         return ResponseEntity.ok(pedidoService.buscarStatusPedido(id, emailLogado));
     }
 
-    // (P1) GET /api/admin/pedidos (painel da cozinha/gerência, com filtros e paginação)
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','KITCHEN','DELIVERY')")
     @GetMapping("/admin/pedidos")
     public ResponseEntity<Page<PedidoResponseDTO>> listarPedidosAdmin(
@@ -64,19 +57,52 @@ public class PedidoController {
         return ResponseEntity.ok(pedidoService.listarPedidosAdmin(status, pageable));
     }
 
-    // (P1) PATCH /api/admin/pedidos/{id}/status (funcionários atualizam o status)
+    // PATCH antigo mantido para o painel gerencial
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','KITCHEN','DELIVERY')")
     @PatchMapping("/admin/pedidos/{id}/status")
-    public ResponseEntity<PedidoResponseDTO> atualizarStatus(
+    public ResponseEntity<PedidoResponseDTO> atualizarStatusAdmin(
             @PathVariable Long id,
             @RequestBody Map<String, String> body) {
-        
         String novoStatus = body.get("status");
         PedidoResponseDTO response = pedidoService.atualizarStatus(id, novoStatus);
         return ResponseEntity.ok(response);
     }
+
+    // NOVA ROTA: PATCH /api/pedidos/{id}/status (Para os painéis da cozinha e entregador não quebrarem)
+    @PreAuthorize("hasAnyRole('MANAGER','KITCHEN','DELIVERY')")
+    @PatchMapping("/pedidos/{id}/status")
+    public ResponseEntity<PedidoResponseDTO> atualizarStatusFront(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body) {
+        String novoStatus = body.get("status");
+        PedidoResponseDTO response = pedidoService.atualizarStatus(id, novoStatus);
+        return ResponseEntity.ok(response);
+    }
+
+    // NOVA ROTA: PATCH /api/pedidos/{id}/entregador (Atribuição de entregador)
+    @PreAuthorize("hasAnyRole('MANAGER','DELIVERY')")
+    @PatchMapping("/pedidos/{id}/entregador")
+    public ResponseEntity<PedidoResponseDTO> atribuirEntregador(
+            @PathVariable Long id,
+            @RequestBody Map<String, Long> body) {
+        Long entregadorId = body.get("entregadorId");
+        PedidoResponseDTO response = pedidoService.atribuirEntregador(id, entregadorId);
+        return ResponseEntity.ok(response);
+    }
+
+    // NOVA ROTA: PATCH /api/admin/pedidos/{id}/cancelar (Cancelamento com estorno e trava RN04)
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','CLIENTE')")
+    @PatchMapping("/admin/pedidos/{id}/cancelar")
+    public ResponseEntity<PedidoResponseDTO> cancelarPedido(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body,
+            Principal principal) {
+        String motivo = body.get("motivo");
+        String emailLogado = principal != null ? principal.getName() : null;
+        PedidoResponseDTO response = pedidoService.cancelarPedido(id, motivo, emailLogado);
+        return ResponseEntity.ok(response);
+    }
     
-    // (Extra) GET /api/pedidos (endpoint antigo para os painéis, mantendo compatibilidade)
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','KITCHEN','DELIVERY')")
     @GetMapping("/pedidos")
     public ResponseEntity<List<PedidoResponseDTO>> listarPedidosAntigo() {
