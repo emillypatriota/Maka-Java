@@ -2,6 +2,7 @@ package com.maka.api.pedido;
 
 import com.maka.api.exception.ConflitoException;
 import com.maka.api.exception.RegraNegocioException;
+import com.maka.api.fichatecnica.Unidades;
 import com.maka.api.model.*;
 import com.maka.api.pedido.dto.*;
 import com.maka.api.repository.*;
@@ -13,10 +14,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,18 +31,20 @@ public class PedidoService {
     private final UsuarioRepository usuarioRepository;
     private final EstoqueMovimentacaoRepository estoqueRepository;
     private final FichaTecnicaRepository fichaTecnicaRepository;
+    private final IngredienteRepository ingredienteRepository;
 
-    // CORREÇÃO (Erro 4): Removido o FuncionarioRepository do construtor, pois o Entregador é um Usuario
     public PedidoService(PedidoRepository pedidoRepository, 
                          ProdutoRepository produtoRepository, 
                          UsuarioRepository usuarioRepository,
                          EstoqueMovimentacaoRepository estoqueRepository,
-                         FichaTecnicaRepository fichaTecnicaRepository) {
+                         FichaTecnicaRepository fichaTecnicaRepository,
+                         IngredienteRepository ingredienteRepository) {
         this.pedidoRepository = pedidoRepository;
         this.produtoRepository = produtoRepository;
         this.usuarioRepository = usuarioRepository;
         this.estoqueRepository = estoqueRepository;
         this.fichaTecnicaRepository = fichaTecnicaRepository;
+        this.ingredienteRepository = ingredienteRepository;
     }
 
     @Transactional
@@ -118,15 +124,25 @@ public class PedidoService {
     }
 
     @Transactional
-    public PedidoResponseDTO atribuirEntregador(Long id, Long entregadorId) {
+    public PedidoResponseDTO atribuirEntregador(Long id, Long entregadorId, String emailLogado) {
         Pedido pedido = pedidoRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Pedido não encontrado."));
-        if (entregadorId == null) throw new RegraNegocioException("ID do entregador é obrigatório.");
 
-        // CORREÇÃO (Erro 4): Busca em UsuarioRepository e valida o perfil DELIVERY
-        Usuario entregador = usuarioRepository.findById(entregadorId)
-                .orElseThrow(() -> new NoSuchElementException("Entregador não encontrado."));
-        
+        Usuario usuarioLogado = usuarioRepository.findByEmail(emailLogado)
+                .orElseThrow(() -> new NoSuchElementException("Usuário logado não encontrado."));
+
+        Usuario entregador;
+        if (usuarioLogado.getPerfil() == Perfil.DELIVERY) {
+            // O painel do entregador não envia id: o entregador logado assume a entrega
+            entregador = usuarioLogado;
+        } else {
+            if (entregadorId == null) {
+                throw new RegraNegocioException("ID do entregador é obrigatório.");
+            }
+            entregador = usuarioRepository.findById(entregadorId)
+                    .orElseThrow(() -> new NoSuchElementException("Entregador não encontrado."));
+        }
+
         if (entregador.getPerfil() != Perfil.DELIVERY) {
             throw new RegraNegocioException("O usuário selecionado não tem perfil de entregador.");
         }
@@ -143,13 +159,18 @@ public class PedidoService {
         Usuario usuarioLogado = usuarioRepository.findByEmail(emailLogado)
                 .orElseThrow(() -> new NoSuchElementException("Usuário logado não encontrado."));
 
-        // CORREÇÃO (Erro 6): Impede que o cliente cancele o pedido de outra pessoa
+        // Cliente só cancela o próprio pedido
         if (usuarioLogado.getPerfil() == Perfil.CLIENTE && !usuarioLogado.getEmail().equals(pedido.getClienteEmail())) {
             throw new AccessDeniedException("Você não tem permissão para cancelar o pedido de outro cliente.");
         }
 
-        if ((pedido.getStatus() == StatusPedido.preparing || pedido.getStatus() == StatusPedido.ready) 
-            && (usuarioLogado.getPerfil() == Perfil.CLIENTE || usuarioLogado.getPerfil() == Perfil.KITCHEN || usuarioLogado.getPerfil() == Perfil.DELIVERY)) {
+        if (pedido.getStatus() == StatusPedido.cancelled) {
+            throw new ConflitoException("O pedido já está cancelado.");
+        }
+
+        // RN04: depois de preparing, só gerente ou admin cancela
+        if ((pedido.getStatus() == StatusPedido.preparing || pedido.getStatus() == StatusPedido.ready)
+                && (usuarioLogado.getPerfil() == Perfil.CLIENTE || usuarioLogado.getPerfil() == Perfil.KITCHEN || usuarioLogado.getPerfil() == Perfil.DELIVERY)) {
             throw new AccessDeniedException("Apenas o Gerente ou Admin pode cancelar um pedido em preparo ou pronto.");
         }
 
@@ -157,93 +178,93 @@ public class PedidoService {
             throw new ConflitoException("Não é possível cancelar um pedido que já saiu para entrega ou foi entregue.");
         }
 
-        if (pedido.getStatus() == StatusPedido.confirmed || pedido.getStatus() == StatusPedido.preparing || pedido.getStatus() == StatusPedido.ready) {
-            processarEstornoDeEstoque(pedido, motivo);
-        }
+        // RF-018: devolve ao estoque o que a confirmação tinha baixado (se tinha)
+        processarEstornoDeEstoque(pedido);
 
         pedido.setStatus(StatusPedido.cancelled);
-        pedido.setMotivoCancelamento(motivo != null ? motivo : "Cancelado sem motivo especificado");
+        pedido.setMotivoCancelamento(motivo != null && !motivo.isBlank() ? motivo : "Cancelado sem motivo especificado");
         return converterParaResponseDTO(pedidoRepository.save(pedido));
     }
 
     // --- REGRAS DE ESTOQUE (BLOCO 6) ---
 
+    // RF-017 e RN03: baixa automática ao confirmar o pedido, tudo na mesma transação
     private void processarBaixaDeEstoque(Pedido pedido) {
-        // CORREÇÃO (Erro 8): Trava para dois cliques simultâneos
-        List<EstoqueMovimentacao> verificacao = estoqueRepository.findByPedido(pedido);
-        if (verificacao != null && !verificacao.isEmpty()) {
+        if (!estoqueRepository.findByPedidoId(pedido.getId()).isEmpty()) {
             throw new ConflitoException("O estoque deste pedido já foi baixado.");
         }
 
-        List<String> faltantes = new ArrayList<>();
-        List<EstoqueMovimentacao> movimentacoesPendentes = new ArrayList<>();
-
+        // Total necessário por ingrediente, já na unidade do ingrediente.
+        // TreeMap: os ingredientes são travados sempre na mesma ordem (evita impasse entre dois pedidos).
+        Map<Long, BigDecimal> necessario = new TreeMap<>();
         for (ItemPedido item : pedido.getItens()) {
             FichaTecnica ficha = fichaTecnicaRepository.findByProdutoId(item.getProduto().getId()).orElse(null);
             if (ficha == null) continue;
 
+            int rendimento = ficha.getRendimento() != null && ficha.getRendimento() > 0 ? ficha.getRendimento() : 1;
             for (FichaTecnicaItem fichaItem : ficha.getItens()) {
-                // CORREÇÃO (Erro 7): Fator de Correção
                 BigDecimal fator = fichaItem.getFatorCorrecao() != null ? fichaItem.getFatorCorrecao() : BigDecimal.ONE;
-                BigDecimal quantidadeNecessaria = fichaItem.getQuantidade()
-                        .multiply(BigDecimal.valueOf(item.getQuantidade()))
-                        .multiply(fator);
-
-                // CORREÇÃO (Erro 7): Conversão de Unidade (KG para G / L para ML)
-                String unFicha = fichaItem.getUnidadeMedida();
-                String unIng = fichaItem.getIngrediente().getUnidadeMedida();
-                if (unFicha != null && unIng != null) {
-                    if ((unFicha.equalsIgnoreCase("KG") && unIng.equalsIgnoreCase("G")) ||
-                        (unFicha.equalsIgnoreCase("L") && unIng.equalsIgnoreCase("ML"))) {
-                        quantidadeNecessaria = quantidadeNecessaria.multiply(BigDecimal.valueOf(1000));
-                    }
-                }
-
-                BigDecimal saldoAtual = estoqueRepository.calcularSaldo(fichaItem.getIngrediente().getId());
-
-                if (saldoAtual.compareTo(quantidadeNecessaria) < 0) {
-                    faltantes.add(fichaItem.getIngrediente().getNome() + " (Falta: " + quantidadeNecessaria.subtract(saldoAtual) + ")");
-                } else {
-                    EstoqueMovimentacao mov = new EstoqueMovimentacao();
-                    mov.setIngrediente(fichaItem.getIngrediente());
-                    mov.setQuantidade(quantidadeNecessaria);
-                    // CORREÇÃO (Erro 2): Uso dos Enums
-                    mov.setTipo(TipoMovimentacao.SAIDA);
-                    mov.setMotivo(MotivoMovimentacao.VENDA);
-                    // CORREÇÃO (Erro 7): Ligação com o Pedido
-                    mov.setPedido(pedido);
-                    // CORREÇÃO (Erro 3): mov.setDataMovimentacao removido (O BD preenche created_at)
-                    movimentacoesPendentes.add(mov);
-                }
+                BigDecimal porPorcao = fichaItem.getQuantidade()
+                        .multiply(fator)
+                        .divide(BigDecimal.valueOf(rendimento), MathContext.DECIMAL64);
+                BigDecimal naUnidadeDoIngrediente = Unidades.converter(
+                        porPorcao, fichaItem.getUnidade(), fichaItem.getIngrediente().getUnidadeMedida());
+                BigDecimal total = naUnidadeDoIngrediente.multiply(BigDecimal.valueOf(item.getQuantidade()));
+                necessario.merge(fichaItem.getIngrediente().getId(), total, BigDecimal::add);
             }
+        }
+
+        List<String> faltantes = new ArrayList<>();
+        List<EstoqueMovimentacao> saidas = new ArrayList<>();
+
+        for (Map.Entry<Long, BigDecimal> entrada : necessario.entrySet()) {
+            Ingrediente ingrediente = ingredienteRepository.findByIdForUpdate(entrada.getKey())
+                    .orElseThrow(() -> new NoSuchElementException("Ingrediente não encontrado: " + entrada.getKey()));
+
+            BigDecimal quantidade = entrada.getValue().setScale(3, RoundingMode.HALF_UP);
+            if (quantidade.signum() <= 0) continue;
+
+            BigDecimal saldo = estoqueRepository.calcularSaldo(ingrediente.getId());
+            if (saldo.compareTo(quantidade) < 0) {
+                BigDecimal falta = quantidade.subtract(saldo).setScale(3, RoundingMode.HALF_UP);
+                faltantes.add(ingrediente.getNome() + " (faltam " + falta.stripTrailingZeros().toPlainString()
+                        + " " + ingrediente.getUnidadeMedida() + ")");
+                continue;
+            }
+
+            EstoqueMovimentacao saida = new EstoqueMovimentacao();
+            saida.setIngrediente(ingrediente);
+            saida.setTipo(TipoMovimentacao.SAIDA);
+            saida.setMotivo(MotivoMovimentacao.VENDA);
+            saida.setQuantidade(quantidade);
+            saida.setPedidoId(pedido.getId());
+            saidas.add(saida);
         }
 
         if (!faltantes.isEmpty()) {
             throw new RegraNegocioException("Estoque insuficiente. Faltam: " + String.join(", ", faltantes));
         }
 
-        estoqueRepository.saveAll(movimentacoesPendentes);
+        estoqueRepository.saveAll(saidas);
     }
 
-    private void processarEstornoDeEstoque(Pedido pedido, String motivo) {
-        // CORREÇÃO (Erro 8): Checa o que REALMENTE saiu em vez de simular
-        List<EstoqueMovimentacao> saidas = estoqueRepository.findByPedido(pedido);
-        if (saidas == null || saidas.isEmpty()) return;
+    // RF-018: devolve exatamente o que saiu para este pedido; se nada saiu (ainda pendente), não faz nada
+    private void processarEstornoDeEstoque(Pedido pedido) {
+        List<EstoqueMovimentacao> movimentacoes = estoqueRepository.findByPedidoId(pedido.getId());
+        boolean jaEstornado = movimentacoes.stream().anyMatch(m -> m.getTipo() == TipoMovimentacao.ESTORNO);
+        if (jaEstornado) return;
 
         List<EstoqueMovimentacao> estornos = new ArrayList<>();
-        for (EstoqueMovimentacao saida : saidas) {
-            // Se foi uma SAIDA, nós estornamos como ENTRADA
-            if (saida.getTipo() == TipoMovimentacao.SAIDA) {
-                EstoqueMovimentacao estorno = new EstoqueMovimentacao();
-                estorno.setIngrediente(saida.getIngrediente());
-                estorno.setQuantidade(saida.getQuantidade());
-                // CORREÇÃO (Erro 5): Enums corretos (ENTRADA com motivo ESTORNO)
-                estorno.setTipo(TipoMovimentacao.ENTRADA);
-                estorno.setMotivo(MotivoMovimentacao.ESTORNO);
-                // CORREÇÃO (Erro 7): Ligação mantida com o Pedido
-                estorno.setPedido(pedido); 
-                estornos.add(estorno);
-            }
+        for (EstoqueMovimentacao saida : movimentacoes) {
+            if (saida.getTipo() != TipoMovimentacao.SAIDA) continue;
+
+            EstoqueMovimentacao estorno = new EstoqueMovimentacao();
+            estorno.setIngrediente(saida.getIngrediente());
+            estorno.setTipo(TipoMovimentacao.ESTORNO);
+            estorno.setMotivo(MotivoMovimentacao.ESTORNO);
+            estorno.setQuantidade(saida.getQuantidade());
+            estorno.setPedidoId(pedido.getId());
+            estornos.add(estorno);
         }
         estoqueRepository.saveAll(estornos);
     }
