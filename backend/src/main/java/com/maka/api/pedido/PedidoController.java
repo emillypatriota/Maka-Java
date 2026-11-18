@@ -45,7 +45,8 @@ public class PedidoController {
     // CORREÇÃO (Erro 1): Sintaxe do ResponseEntity>
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/pedidos/{id}/status")
-    public ResponseEntity> buscarStatusPedido(@PathVariable Long id, Principal principal) {
+        public ResponseEntity<Map<String, String>> buscarStatusPedido(@PathVariable Long id, Principal principal) {
+
         String emailLogado = principal != null ? principal.getName() : null;
         return ResponseEntity.ok(pedidoService.buscarStatusPedido(id, emailLogado));
     }
