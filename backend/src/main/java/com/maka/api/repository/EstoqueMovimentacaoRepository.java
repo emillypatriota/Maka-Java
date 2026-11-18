@@ -16,6 +16,8 @@ public interface EstoqueMovimentacaoRepository extends JpaRepository<EstoqueMovi
 
     Page<EstoqueMovimentacao> findByIngredienteId(Long ingredienteId, Pageable pageable);
 
+    List<EstoqueMovimentacao> findByPedidoId(Long pedidoId);
+    
     @Query(value = """
             SELECT COALESCE(SUM(CASE WHEN tipo = 'SAIDA' THEN -quantidade ELSE quantidade END), 0)
             FROM estoque_movimentacao
