@@ -83,11 +83,14 @@ public class PedidoController {
     @PatchMapping("/pedidos/{id}/entregador")
     public ResponseEntity<PedidoResponseDTO> atribuirEntregador(
             @PathVariable Long id,
-            @RequestBody Map<String, Long> body) {
-        Long entregadorId = body.get("entregadorId");
-        PedidoResponseDTO response = pedidoService.atribuirEntregador(id, entregadorId);
+            @RequestBody(required = false) Map<String, Long> body,
+            Principal principal) {
+        Long entregadorId = body != null ? body.get("entregadorId") : null;
+        String emailLogado = principal != null ? principal.getName() : null;
+        PedidoResponseDTO response = pedidoService.atribuirEntregador(id, entregadorId, emailLogado);
         return ResponseEntity.ok(response);
     }
+
 
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','CLIENTE')")
     @PatchMapping("/admin/pedidos/{id}/cancelar")
