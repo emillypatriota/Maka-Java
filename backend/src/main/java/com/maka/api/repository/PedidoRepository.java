@@ -1,6 +1,7 @@
 package com.maka.api.repository;
 
 import java.util.List;
+import java.time.LocalDateTime;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,4 +28,8 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
     @EntityGraph(attributePaths = { "itens", "itens.produto" })
     List<Pedido> findByClienteEmailOrderByCriadoEmDesc(String clienteEmail);
+
+    @EntityGraph(attributePaths = { "itens", "itens.produto" })
+    List<Pedido> findByCriadoEmGreaterThanEqualAndCriadoEmLessThan(
+            LocalDateTime inicio, LocalDateTime fimExclusivo);
 }
