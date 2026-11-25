@@ -69,7 +69,7 @@ public class PedidoController {
         return ResponseEntity.ok(response);
     }
 
-    @PreAuthorize("hasAnyRole('MANAGER','KITCHEN','DELIVERY')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','KITCHEN','DELIVERY')")
     @PatchMapping("/pedidos/{id}/status")
     public ResponseEntity<PedidoResponseDTO> atualizarStatusFront(
             @PathVariable Long id,
@@ -79,7 +79,7 @@ public class PedidoController {
         return ResponseEntity.ok(response);
     }
 
-    @PreAuthorize("hasAnyRole('MANAGER','DELIVERY')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','DELIVERY')")
     @PatchMapping("/pedidos/{id}/entregador")
     public ResponseEntity<PedidoResponseDTO> atribuirEntregador(
             @PathVariable Long id,
