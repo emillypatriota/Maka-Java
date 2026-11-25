@@ -90,7 +90,7 @@ import { NgFor } from '@angular/common';
               <p style="font-size:.68rem;color:rgba(255,255,255,.3);margin-bottom:.25rem;letter-spacing:.08em">{{ c.role }}</p>
               <p style="font-family:var(--font-mono);font-size:.82rem;color:rgba(255,255,255,.7)">
                 {{ c.user }}&#64;maka.com
-                <span style="color:var(--brand-400);margin-left:.25rem">/ maka2024</span>
+                <span style="color:var(--brand-400);margin-left:.25rem">/ 123456</span>
               </p>
             </div>
           </div>

@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { roleGuard } from './guards/auth.guard';
+import { authGuard, roleGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
   // ── Client area ───────────────────────────────────────────
@@ -10,9 +10,14 @@ export const routes: Routes = [
       { path: '',          loadComponent: () => import('./pages/home/home.component').then(m => m.HomeComponent) },
       { path: 'cardapio',  loadComponent: () => import('./pages/menu/menu.component').then(m => m.MenuComponent) },
       { path: 'carrinho',  loadComponent: () => import('./pages/cart/cart.component').then(m => m.CartComponent) },
-      { path: 'checkout',  loadComponent: () => import('./pages/checkout/checkout.component').then(m => m.CheckoutComponent) },
-      { path: 'confirmacao', loadComponent: () => import('./pages/confirmation/confirmation.component').then(m => m.ConfirmationComponent) },
-      { path: 'meus-pedidos', loadComponent: () => import('./pages/my-orders/my-orders.component').then(m => m.MyOrdersComponent) },
+      // Checkout, confirmação e meus pedidos exigem cliente logado (sem login vai para /entrar)
+      { path: 'checkout',  canActivate: [authGuard], loadComponent: () => import('./pages/checkout/checkout.component').then(m => m.CheckoutComponent) },
+      { path: 'confirmacao', canActivate: [authGuard], loadComponent: () => import('./pages/confirmation/confirmation.component').then(m => m.ConfirmationComponent) },
+      { path: 'meus-pedidos', canActivate: [authGuard], loadComponent: () => import('./pages/my-orders/my-orders.component').then(m => m.MyOrdersComponent) },
+      { path: 'meus-pedidos/:id', canActivate: [authGuard], loadComponent: () => import('./pages/my-orders/order-details.component').then(m => m.OrderDetailsComponent) },
+      // Login e cadastro do cliente
+      { path: 'entrar',    loadComponent: () => import('./pages/auth/client-login/client-login.component').then(m => m.ClientLoginComponent) },
+      { path: 'cadastro',  loadComponent: () => import('./pages/auth/register/register.component').then(m => m.RegisterComponent) },
     ]
   },
 
@@ -34,10 +39,18 @@ export const routes: Routes = [
       { path: 'dashboard', redirectTo: 'insights', pathMatch: 'full' },
       { path: 'pedidos',   loadComponent: () => import('./pages/employee/orders/orders-management.component').then(m => m.OrdersManagementComponent) },
       { path: 'cardapio',  loadComponent: () => import('./pages/employee/menu-management/menu-management.component').then(m => m.MenuManagementComponent) },
+      { path: 'ingredientes', loadComponent: () => import('./pages/employee/ingredients/ingredients-management.component').then(m => m.IngredientsManagementComponent) },
+      { path: 'ingredientes/:id/historico', loadComponent: () => import('./pages/employee/ingredients/price-history.component').then(m => m.PriceHistoryComponent) },
+      { path: 'estoque', loadComponent: () => import('./pages/employee/stock/stock-management.component').then(m => m.StockManagementComponent) },
       { path: 'cozinha',   loadComponent: () => import('./pages/employee/kitchen/kitchen-dashboard.component').then(m => m.KitchenDashboardComponent) },
       { path: 'entregas',  loadComponent: () => import('./pages/delivery/dashboard/delivery-dashboard.component').then(m => m.DeliveryDashboardComponent) },
       { path: 'insights',      loadComponent: () => import('./pages/employee/insights/insights-dashboard.component').then(m => m.InsightsDashboardComponent) },
       { path: 'funcionarios',  loadComponent: () => import('./pages/employee/staff/staff-management.component').then(m => m.StaffManagementComponent) },
+      // Bloco 7 (Auth): fornecedores, catálogo, cotação e pedidos de compra. Gerente e admin (RF-043)
+      { path: 'fornecedores',  loadComponent: () => import('./pages/employee/suppliers/suppliers-management.component').then(m => m.SuppliersManagementComponent) },
+      { path: 'compras',       loadComponent: () => import('./pages/employee/purchases/purchases-management.component').then(m => m.PurchasesManagementComponent) },
+      // RF-041: usuários internos, só o ADMIN (o gerente volta para a casa dele)
+      { path: 'usuarios',      canActivate: [roleGuard('admin')], loadComponent: () => import('./pages/employee/users/users-management.component').then(m => m.UsersManagementComponent) },
     ]
   },
 

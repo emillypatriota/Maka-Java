@@ -670,13 +670,18 @@ export class CheckoutComponent implements OnInit {
         `, CEP ${this.form.zipCode}`,
       ].filter(Boolean).join(' ');
 
+      // A API só aceita pix | credit | debit | cash em paymentMethod;
+      // os detalhes (cartão, parcelas, troco) vão junto das observações.
+      const obs = [this.form.observations, `Pagamento: ${payDetail}`].filter(Boolean).join(' | ');
+
       const order = await this.orders.addOrder({
-        items:         this.cartItems,
+        items:         this.cartItems.map(i => ({ id: i.id, quantity: i.quantity, observations: i.observations })),
         customer:      { name: this.form.name, phone: this.form.phone, address: addr },
-        paymentMethod: payDetail,
+        paymentMethod: this.form.payment,
+        orderType:     'delivery',
         total:         this.total,
         deliveryFee:   this.deliveryFee,
-        observations:  this.form.observations,
+        observations:  obs,
       });
       localStorage.setItem('maka_customer_phone', this.form.phone);
       this.cart.clear();

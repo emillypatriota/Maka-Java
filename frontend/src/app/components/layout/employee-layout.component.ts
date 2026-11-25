@@ -6,6 +6,7 @@ import { filter } from 'rxjs/operators';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
 import { OrdersService } from '../../services/orders.service';
+import { EstoqueService } from '../../services/estoque.service';
 
 interface NavItem {
   label: string;
@@ -278,12 +279,14 @@ export class EmployeeLayoutComponent implements OnInit, OnDestroy {
   private pendingCount = signal(0);
   private routerSub?: Subscription;
   private ordersSub?: Subscription;
+  private estoqueTimer?: ReturnType<typeof setInterval>;
 
   constructor(
     private auth: AuthService,
     private toast: ToastService,
     private router: Router,
     private ordersService: OrdersService,
+    private estoqueService: EstoqueService,
     private cdr: ChangeDetectorRef
   ) {
     this.routerSub = this.router.events.pipe(
@@ -300,8 +303,8 @@ export class EmployeeLayoutComponent implements OnInit, OnDestroy {
     this.initials      = this.userName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
     this.currentPage.set(this.resolvePageTitle());
 
-    if (u.role === 'manager') {
-      this.roleLabel      = 'Gerente Geral';
+    if (u.role === 'manager' || u.role === 'admin') {
+      this.roleLabel      = u.role === 'admin' ? 'Administrador' : 'Gerente Geral';
       this.roleSubtitle   = 'ADMIN';
       this.dashboardRoute = '/gerente/insights';
       this.buildManagerNav();
@@ -316,6 +319,10 @@ export class EmployeeLayoutComponent implements OnInit, OnDestroy {
       next: orders => this.pendingCount.set(orders.filter((o: any) => o.status === 'pending').length),
       error: err => console.error('[EmployeeLayout] orders error:', err),
     });
+    if (u.role === 'manager' || u.role === 'admin') {
+      this.estoqueService.atualizarAlertas();
+      this.estoqueTimer = setInterval(() => this.estoqueService.atualizarAlertas(), 60_000);
+    }
 
     this.ready = true;
     this.cdr.detectChanges();
@@ -324,17 +331,23 @@ export class EmployeeLayoutComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.routerSub?.unsubscribe();
     this.ordersSub?.unsubscribe();
+    if (this.estoqueTimer) clearInterval(this.estoqueTimer);
   }
 
   private resolvePageTitle(): string {
     const url = this.router.url;
     if (url.includes('dashboard'))    return 'Dashboard';
     if (url.includes('pedidos'))      return 'Pedidos';
+    if (url.includes('ingredientes')) return 'Ingredientes';
+    if (url.includes('estoque'))      return 'Estoque';
     if (url.includes('cardapio'))     return 'Cardápio';
     if (url.includes('cozinha'))      return 'Cozinha';
     if (url.includes('entregas'))     return 'Entregas';
     if (url.includes('insights'))     return 'Insights';
     if (url.includes('funcionarios')) return 'Funcionários';
+    if (url.includes('fornecedores')) return 'Fornecedores';
+    if (url.includes('compras'))      return 'Compras';
+    if (url.includes('usuarios'))     return 'Usuários';
     if (url.includes('painel'))       return 'Painel da Cozinha';
     return 'Dashboard';
   }
@@ -361,6 +374,17 @@ export class EmployeeLayoutComponent implements OnInit, OnDestroy {
             icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2"/><path d="M9 12h6M9 16h4"/></svg>`,
           },
           {
+            label: 'Ingredientes',
+            route: '/gerente/ingredientes',
+            icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19h16M6 16l2-8h8l2 8M9 8V5a3 3 0 016 0v3M10 12h4"/></svg>`,
+          },
+          {
+            label: 'Estoque',
+            route: '/gerente/estoque',
+            icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19h16M6 16l2-8h8l2 8M9 8V5a3 3 0 016 0v3M10 12h4"/></svg>`,
+            badgeSignal: () => this.estoqueService.alertas(),
+          },
+          {
             label: 'Cozinha',
             route: '/gerente/cozinha',
             icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8zM6 1v3M10 1v3M14 1v3"/></svg>`,
@@ -373,6 +397,21 @@ export class EmployeeLayoutComponent implements OnInit, OnDestroy {
         ]
       },
       {
+        label: 'SUPRIMENTOS',
+        items: [
+          {
+            label: 'Fornecedores',
+            route: '/gerente/fornecedores',
+            icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6M9 10h.01M15 10h.01"/></svg>`,
+          },
+          {
+            label: 'Compras',
+            route: '/gerente/compras',
+            icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>`,
+          },
+        ]
+      },
+      {
         label: 'EQUIPE',
         items: [
           {
@@ -380,6 +419,12 @@ export class EmployeeLayoutComponent implements OnInit, OnDestroy {
             route: '/gerente/funcionarios',
             icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>`,
           },
+          // RF-041: só o ADMIN vê (a rota e a API também barram o gerente)
+          ...(this.role === 'admin' ? [{
+            label: 'Usuários',
+            route: '/gerente/usuarios',
+            icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0M19 8l1.5 1.5L23 7"/></svg>`,
+          }] : []),
         ]
       },
       {
@@ -416,7 +461,7 @@ export class EmployeeLayoutComponent implements OnInit, OnDestroy {
   }
 
   async logout() {
-    const role = this.role;
+    const role = this.role === 'admin' ? 'manager' : this.role;
     await this.auth.logout();
     this.toast.show('Logout realizado com sucesso');
     this.router.navigate([`/login/${role}`]);

@@ -1,28 +1,8 @@
-import { Component, OnInit, OnDestroy, signal, computed } from '@angular/core';
+import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { NgFor, NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import {
-  collection, addDoc, updateDoc, deleteDoc, doc,
-  onSnapshot, query, orderBy, serverTimestamp
-} from 'firebase/firestore';
-import { firestore } from '../../../core/firebase/firebase.config';
 import { ToastService } from '../../../services/toast.service';
-
-type StaffRole = 'manager' | 'kitchen' | 'delivery' | 'cashier' | 'waiter';
-type StaffStatus = 'active' | 'inactive' | 'on_leave';
-
-interface StaffMember {
-  id: string;
-  name: string;
-  role: StaffRole;
-  phone: string;
-  email: string;
-  status: StaffStatus;
-  schedule: string;
-  hireDate: string;
-  notes?: string;
-  createdAt?: any;
-}
+import { StaffService, StaffMember, StaffRole, StaffStatus } from '../../../services/staff.service';
 
 const ROLE_CONFIG: Record<StaffRole, { label: string; color: string; bg: string; icon: string }> = {
   manager:  { label: 'Gerente',    color: '#f59e0b', bg: 'rgba(245,158,11,.12)', icon: '👑' },
@@ -38,15 +18,6 @@ const STATUS_CONFIG: Record<StaffStatus, { label: string; color: string; bg: str
   on_leave: { label: 'Licença',  color: '#f59e0b', bg: 'rgba(245,158,11,.12)' },
 };
 
-const SEED_STAFF: Omit<StaffMember, 'id'>[] = [
-  { name: 'Roberto Silva',   role: 'manager',  phone: '(11) 98765-4321', email: 'gerente@maka.com',    status: 'active',   schedule: 'Seg–Sex 09h–18h', hireDate: '2022-03-01' },
-  { name: 'Ana Souza',       role: 'kitchen',  phone: '(11) 97654-3210', email: 'ana.souza@maka.com',  status: 'active',   schedule: 'Ter–Dom 12h–21h', hireDate: '2022-06-15' },
-  { name: 'Carlos Mendes',   role: 'delivery', phone: '(11) 96543-2109', email: 'entregador@maka.com', status: 'active',   schedule: 'Seg–Sáb 18h–23h', hireDate: '2023-01-10' },
-  { name: 'Fernanda Lima',   role: 'cashier',  phone: '(11) 95432-1098', email: 'f.lima@maka.com',     status: 'active',   schedule: 'Seg–Sex 11h–20h', hireDate: '2023-04-20' },
-  { name: 'Paulo Ferreira',  role: 'waiter',   phone: '(11) 94321-0987', email: 'p.ferreira@maka.com', status: 'active',   schedule: 'Qua–Dom 18h–23h', hireDate: '2023-07-05' },
-  { name: 'Mariana Costa',   role: 'kitchen',  phone: '(11) 93210-9876', email: 'm.costa@maka.com',    status: 'on_leave', schedule: 'Seg–Sex 08h–17h', hireDate: '2022-09-12' },
-];
-
 @Component({
   selector: 'app-staff-management',
   standalone: true,
@@ -59,7 +30,7 @@ const SEED_STAFF: Omit<StaffMember, 'id'>[] = [
         <div>
           <h1 style="font-family:var(--font-display);font-size:1.875rem;color:var(--text-primary)">Funcionários</h1>
           <p style="color:var(--text-tertiary);font-size:var(--text-base);margin-top:.25rem">
-            {{ activeCount }} ativos · {{ staff().length }} no total
+            {{ summary()?.active ?? '—' }} ativos · {{ summary()?.total ?? '—' }} no total
           </p>
         </div>
         <button (click)="openModal()" class="btn btn-primary" style="display:flex;align-items:center;gap:.5rem">
@@ -81,14 +52,14 @@ const SEED_STAFF: Omit<StaffMember, 'id'>[] = [
       <div style="display:flex;gap:.875rem;flex-wrap:wrap;margin-bottom:1.25rem">
         <div style="position:relative;flex:1;min-width:200px">
           <svg style="position:absolute;left:.875rem;top:50%;transform:translateY(-50%);color:var(--text-muted)" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input type="text" placeholder="Buscar por nome, cargo ou telefone..."
-            [value]="search()" (input)="search.set($any($event.target).value)"
+          <input type="text" placeholder="Buscar por nome, e-mail ou telefone..." aria-label="Buscar funcionário"
+            [value]="search()" (input)="onSearch($any($event.target).value)"
             style="width:100%;padding:.625rem .875rem .625rem 2.375rem;background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-lg);color:var(--text-primary);font-size:.82rem;outline:none">
         </div>
 
         <div style="display:flex;gap:.375rem">
           <button *ngFor="let f of roleFilters"
-            (click)="activeRole.set(f.value)"
+            (click)="setRole(f.value)"
             [style.background]="activeRole()===f.value ? 'var(--brand-600)' : 'var(--surface-1)'"
             [style.color]="activeRole()===f.value ? '#fff' : 'var(--text-muted)'"
             [style.borderColor]="activeRole()===f.value ? 'var(--brand-600)' : 'var(--border)'"
@@ -100,7 +71,7 @@ const SEED_STAFF: Omit<StaffMember, 'id'>[] = [
 
       <!-- Staff grid -->
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1.125rem">
-        <div *ngFor="let member of filtered()" class="staff-card"
+        <div *ngFor="let member of staff()" class="staff-card"
              style="background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-xl);overflow:hidden;transition:all .2s">
 
           <!-- Color top bar -->
@@ -170,12 +141,31 @@ const SEED_STAFF: Omit<StaffMember, 'id'>[] = [
           </div>
         </div>
 
-        <!-- Empty state -->
-        <div *ngIf="filtered().length === 0" style="grid-column:1/-1;text-align:center;padding:4rem 2rem;background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-2xl)">
+        <!-- Empty / loading / error -->
+        <div *ngIf="staff().length === 0" role="status" style="grid-column:1/-1;text-align:center;padding:4rem 2rem;background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-2xl)">
           <div style="font-size:3rem;margin-bottom:1rem">👥</div>
-          <p style="color:var(--text-muted)">Nenhum funcionário encontrado</p>
+          <p *ngIf="!loaded()" style="color:var(--text-muted)">Carregando funcionários...</p>
+          <p *ngIf="loaded() && !error()" style="color:var(--text-muted)">Nenhum funcionário encontrado</p>
+          <ng-container *ngIf="loaded() && error()">
+            <p style="color:var(--danger-text);margin-bottom:1rem">{{ error() }}</p>
+            <button class="btn btn-ghost btn-sm" (click)="staffService.load()">Tentar de novo</button>
+          </ng-container>
         </div>
       </div>
+
+      <!-- Pagination -->
+      <footer *ngIf="page().totalElements > 0"
+              style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;padding:1.25rem 0">
+        <span style="font-size:var(--text-sm);color:var(--text-tertiary)">
+          {{ page().totalElements }} funcionário(s) · Página {{ page().number + 1 }} de {{ page().totalPages }}
+        </span>
+        <div style="display:flex;gap:.5rem">
+          <button class="btn btn-ghost btn-sm" type="button" [disabled]="page().number === 0"
+                  (click)="staffService.load({ page: page().number - 1 })">Anterior</button>
+          <button class="btn btn-ghost btn-sm" type="button" [disabled]="page().number + 1 >= page().totalPages"
+                  (click)="staffService.load({ page: page().number + 1 })">Próxima</button>
+        </div>
+      </footer>
 
     </div>
 
@@ -260,13 +250,18 @@ const SEED_STAFF: Omit<StaffMember, 'id'>[] = [
   `]
 })
 export class StaffManagementComponent implements OnInit, OnDestroy {
-  staff = signal<StaffMember[]>([]);
+  // A lista já vem filtrada e paginada do backend
+  get staff()   { return this.staffService.staff$; }
+  get loaded()  { return this.staffService.loaded$; }
+  get error()   { return this.staffService.error$; }
+  get page()    { return this.staffService.page$; }
+  get summary() { return this.staffService.summary$; }
   search = signal('');
+  private searchTimer?: ReturnType<typeof setTimeout>;
   activeRole = signal<StaffRole | 'all'>('all');
   modalOpen = signal(false);
   saving = false;
   editingId: string | null = null;
-  private unsubStaff?: () => void;
 
   form: Omit<StaffMember, 'id'> = this.emptyForm();
 
@@ -279,45 +274,31 @@ export class StaffManagementComponent implements OnInit, OnDestroy {
     { label: 'Garçom',     value: 'waiter'   as StaffRole | 'all' },
   ];
 
-  filtered = computed(() => {
-    let list = this.staff();
-    if (this.activeRole() !== 'all') list = list.filter(m => m.role === this.activeRole());
-    const q = this.search().toLowerCase().trim();
-    if (q) list = list.filter(m =>
-      m.name.toLowerCase().includes(q) ||
-      m.phone.includes(q) ||
-      m.email.toLowerCase().includes(q)
-    );
-    return list;
-  });
-
-  get activeCount() { return this.staff().filter(m => m.status === 'active').length; }
-
   get roleKpis() {
+    const byRole = this.summary()?.byRole;
     return Object.entries(ROLE_CONFIG).map(([role, cfg]) => ({
       icon: cfg.icon, label: cfg.label,
-      count: this.staff().filter(m => m.role === role).length,
+      count: byRole ? byRole[role as StaffRole] ?? 0 : '—',
     }));
   }
 
-  constructor(private toast: ToastService) {}
+  constructor(private toast: ToastService, public staffService: StaffService) {}
 
   ngOnInit() {
-    const q = query(collection(firestore, 'staff'), orderBy('name'));
-    this.unsubStaff = onSnapshot(q, async snapshot => {
-      if (snapshot.empty) { await this.seed(); return; }
-      this.staff.set(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as StaffMember)));
-    }, err => console.error('[StaffManagement] Firestore error:', err));
+    this.staffService.load({ page: 0, role: 'all', search: '' });
   }
 
-  ngOnDestroy() {
-    this.unsubStaff?.();
+  ngOnDestroy() { clearTimeout(this.searchTimer); }
+
+  setRole(role: StaffRole | 'all') {
+    this.activeRole.set(role);
+    this.staffService.load({ role, page: 0 });
   }
 
-  private async seed() {
-    for (const member of SEED_STAFF) {
-      await addDoc(collection(firestore, 'staff'), { ...member, createdAt: serverTimestamp() });
-    }
+  onSearch(value: string) {
+    this.search.set(value);
+    clearTimeout(this.searchTimer);
+    this.searchTimer = setTimeout(() => this.staffService.load({ search: value, page: 0 }), 300);
   }
 
   roleCfg(role: StaffRole)     { return ROLE_CONFIG[role]   ?? ROLE_CONFIG.waiter; }
@@ -338,27 +319,31 @@ export class StaffManagementComponent implements OnInit, OnDestroy {
     this.saving = true;
     try {
       if (this.editingId) {
-        await updateDoc(doc(firestore, 'staff', this.editingId), { ...this.form });
+        await this.staffService.updateMember(this.editingId, { ...this.form });
         this.toast.show('Funcionário atualizado!');
       } else {
-        await addDoc(collection(firestore, 'staff'), { ...this.form, createdAt: serverTimestamp() });
+        await this.staffService.addMember({ ...this.form });
         this.toast.show('Funcionário adicionado!');
       }
       this.closeModal();
-    } catch { this.toast.show('Erro ao salvar. Tente novamente.', 'error'); }
+    } catch (e) { this.toast.show(e instanceof Error ? e.message : 'Erro ao salvar. Tente novamente.', 'error'); }
     finally { this.saving = false; }
   }
 
   async toggleStatus(member: StaffMember) {
     const next: StaffStatus = member.status === 'active' ? 'inactive' : 'active';
-    await updateDoc(doc(firestore, 'staff', member.id), { status: next });
-    this.toast.show(next === 'active' ? `${member.name} ativado` : `${member.name} desativado`);
+    try {
+      await this.staffService.setStatus(member.id, next);
+      this.toast.show(next === 'active' ? `${member.name} ativado` : `${member.name} desativado`);
+    } catch (e) { this.toast.show(e instanceof Error ? e.message : 'Erro ao atualizar status.', 'error'); }
   }
 
   async remove(id: string) {
     if (!confirm('Remover este funcionário?')) return;
-    await deleteDoc(doc(firestore, 'staff', id));
-    this.toast.show('Funcionário removido');
+    try {
+      await this.staffService.removeMember(id);
+      this.toast.show('Funcionário removido');
+    } catch (e) { this.toast.show(e instanceof Error ? e.message : 'Erro ao remover.', 'error'); }
   }
 
   private emptyForm(): Omit<StaffMember, 'id'> {

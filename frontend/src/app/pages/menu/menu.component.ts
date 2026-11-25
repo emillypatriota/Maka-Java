@@ -1,7 +1,7 @@
 import { Component, signal, computed } from '@angular/core';
 import { NgFor, NgIf } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { MenuService, CATEGORIES } from '../../services/menu.service';
+import { MenuService } from '../../services/menu.service';
 import { CartService } from '../../services/cart.service';
 import { ToastService } from '../../services/toast.service';
 import { MenuItem } from '../../models';
@@ -211,8 +211,10 @@ const CAT_ICONS: Record<string, string> = {
   `]
 })
 export class MenuComponent {
-  categories = CATEGORIES;
-  selectedCategory = signal(CATEGORIES[0]);
+  // Categorias ativas vêm da API; sem escolha do cliente, mostra a primeira
+  get categories() { return this.menuService.categories$(); }
+  private chosenCategory = signal('');
+  selectedCategory = computed(() => this.chosenCategory() || this.menuService.categories$()[0] || '');
   search = signal('');
   cartCount = 0;
   cartQtyMap = signal<Map<string, number>>(new Map());
@@ -242,7 +244,7 @@ export class MenuComponent {
     );
   }
 
-  selectCategory(cat: string) { this.selectedCategory.set(cat); this.search.set(''); }
+  selectCategory(cat: string) { this.chosenCategory.set(cat); this.search.set(''); }
   catIcon(cat: string) { return CAT_ICONS[cat] ?? '🍽️'; }
   countByCategory(cat: string) { return this.allItems().filter(i => i.active !== false && i.category === cat).length; }
   getQty(id: string) { return this.cartQtyMap().get(id) ?? 0; }

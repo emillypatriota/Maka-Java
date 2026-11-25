@@ -1,423 +1,324 @@
 import {
-  Component, OnInit, OnDestroy, AfterViewInit,
-  ViewChild, ElementRef, NgZone
+  AfterViewInit, Component, ElementRef, OnDestroy, OnInit, NgZone, ViewChild
 } from '@angular/core';
-import { NgFor, NgIf, CurrencyPipe } from '@angular/common';
+import { CurrencyPipe, DecimalPipe, NgFor, NgIf } from '@angular/common';
 import { Subscription } from 'rxjs';
+import { forkJoin } from 'rxjs';
 import { Chart, registerables } from 'chart.js';
-import { OrdersService } from '../../../services/orders.service';
-import { Order } from '../../../models';
+import { DashboardResumo, InsightsService, TopPrato } from '../../../services/insights.service';
 
 Chart.register(...registerables);
 
-const CHART_COLORS = {
-  amber:   'rgba(245,158,11,1)',
-  amberBg: 'rgba(245,158,11,.15)',
-  green:   'rgba(34,197,94,1)',
-  greenBg: 'rgba(34,197,94,.15)',
-  blue:    'rgba(99,102,241,1)',
-  blueBg:  'rgba(99,102,241,.15)',
-  red:     'rgba(239,68,68,1)',
-  redBg:   'rgba(239,68,68,.15)',
-  gray:    'rgba(113,113,122,1)',
-  grayBg:  'rgba(113,113,122,.15)',
-  purple:  'rgba(139,92,246,1)',
-  purpleBg:'rgba(139,92,246,.15)',
-  grid:    'rgba(255,255,255,.06)',
-  text:    'rgba(255,255,255,.5)',
-};
+const AMBER = 'rgba(245,158,11,1)';
+const AMBER_BACKGROUND = 'rgba(245,158,11,.15)';
+const CHART_GRID = 'rgba(255,255,255,.06)';
+const CHART_TEXT = 'rgba(255,255,255,.5)';
 
 @Component({
   selector: 'app-insights-dashboard',
   standalone: true,
-  imports: [NgFor, NgIf, CurrencyPipe],
+  imports: [CurrencyPipe, DecimalPipe, NgFor, NgIf],
   template: `
     <div style="max-width:1280px;margin:0 auto;padding:0 1.5rem 2rem">
-
-      <!-- Header -->
-      <div style="margin-bottom:2rem" class="animate-fade-up">
-        <h1 style="font-family:var(--font-display);font-size:1.875rem;color:var(--text-primary);margin-bottom:.25rem">
-          Insights & Analytics
-        </h1>
-        <p style="color:var(--text-tertiary);font-size:var(--text-base)">
-          Análise de desempenho em tempo real — {{ orders.length }} pedidos no banco
-        </p>
+      <div class="insights-heading animate-fade-up">
+        <div>
+          <h1 style="font-family:var(--font-display);font-size:1.875rem;color:var(--text-primary);margin-bottom:.25rem">
+            Insights & Analytics
+          </h1>
+          <p style="color:var(--text-tertiary);font-size:var(--text-base)">
+            Desempenho de vendas e operação
+          </p>
+        </div>
+        <label class="period-filter">
+          Período
+          <select [value]="periodoDias" (change)="alterarPeriodo($event)">
+            <option value="7">Últimos 7 dias</option>
+            <option value="30">Últimos 30 dias</option>
+            <option value="90">Últimos 90 dias</option>
+          </select>
+        </label>
       </div>
 
-      <!-- KPI Cards -->
-      <div class="grid-4 stagger" style="margin-bottom:2rem">
-
-        <div class="kpi-card">
-          <div class="kpi-icon" style="background:rgba(245,158,11,.12);color:var(--brand-400)">
-            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
-          </div>
-          <div class="kpi-label">Faturamento Total</div>
-          <div class="kpi-value" style="font-size:1.55rem">{{ revenue | currency:'BRL':'symbol':'1.2-2' }}</div>
-          <div class="kpi-trend up">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 6l-9.5 9.5-5-5L1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-            Receita acumulada
-          </div>
-          <div class="kpi-accent" style="background:var(--brand-600)"></div>
-        </div>
-
-        <div class="kpi-card">
-          <div class="kpi-icon" style="background:rgba(99,102,241,.12);color:#818cf8">
-            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-          </div>
-          <div class="kpi-label">Total de Pedidos</div>
-          <div class="kpi-value">{{ orders.length }}</div>
-          <div class="kpi-trend up">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-            {{ deliveredCount }} entregues
-          </div>
-          <div class="kpi-accent" style="background:#6366f1"></div>
-        </div>
-
-        <div class="kpi-card">
-          <div class="kpi-icon" style="background:rgba(34,197,94,.12);color:#4ade80">
-            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-          </div>
-          <div class="kpi-label">Taxa de Conclusão</div>
-          <div class="kpi-value">{{ completionRate }}%</div>
-          <div class="kpi-trend" [class.up]="completionRate >= 80" [class.flat]="completionRate < 80">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-            {{ deliveredCount }} / {{ orders.length }} pedidos
-          </div>
-          <div class="kpi-accent" style="background:#22c55e"></div>
-        </div>
-
-        <div class="kpi-card">
-          <div class="kpi-icon" style="background:rgba(139,92,246,.12);color:#a78bfa">
-            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-          </div>
-          <div class="kpi-label">Ticket Médio</div>
-          <div class="kpi-value" style="font-size:1.55rem">{{ avgTicket | currency:'BRL':'symbol':'1.2-2' }}</div>
-          <div class="kpi-trend up">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-            Por pedido
-          </div>
-          <div class="kpi-accent" style="background:#8b5cf6"></div>
-        </div>
-
+      <div *ngIf="errorMessage" class="card" role="alert"
+           style="padding:1.25rem;margin-bottom:1.5rem;color:var(--danger-text);border-color:var(--danger-border)">
+        {{ errorMessage }}
       </div>
 
-      <!-- Charts row 1: Revenue Line + Status Donut -->
-      <div style="display:grid;grid-template-columns:2fr 1fr;gap:1.5rem;margin-bottom:1.5rem" class="chart-grid-main">
+      <ng-container *ngIf="resumo as dados">
+        <div class="insights-kpis stagger" style="margin-bottom:2rem">
+          <div class="kpi-card">
+            <div class="kpi-label">Faturamento de Hoje</div>
+            <div class="kpi-value" style="font-size:1.55rem">
+              {{ dados.faturamentoHoje | currency:'BRL':'symbol':'1.2-2' }}
+            </div>
+            <div class="kpi-accent" style="background:var(--brand-600)"></div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Pedidos de Hoje</div>
+            <div class="kpi-value">{{ dados.pedidosHoje }}</div>
+            <div class="kpi-accent" style="background:#6366f1"></div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Ticket Médio de Hoje</div>
+            <div class="kpi-value" style="font-size:1.55rem">
+              {{ dados.ticketMedioHoje | currency:'BRL':'symbol':'1.2-2' }}
+            </div>
+            <div class="kpi-accent" style="background:#8b5cf6"></div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Food Cost Médio</div>
+            <div class="kpi-value">{{ dados.foodCostMedio | number:'1.1-2' }}%</div>
+            <div class="kpi-accent" style="background:#10b981"></div>
+          </div>
+        </div>
 
-        <!-- Revenue line chart -->
-        <div class="card">
+        <div class="insights-grid">
+          <section class="card">
+            <div class="card-header">
+              <div>
+                <h2 style="font-family:var(--font-display);font-size:1.125rem;color:var(--text-primary)">
+                  Vendas por Período
+                </h2>
+                <p style="font-size:var(--text-xs);color:var(--text-tertiary);margin-top:.125rem">
+                  Faturamento diário no intervalo selecionado
+                </p>
+              </div>
+            </div>
+            <div class="card-body" style="padding-top:0">
+              <div class="chart-container">
+                <canvas #revenueChart aria-label="Gráfico de faturamento por dia"></canvas>
+                <div *ngIf="!loading && !dados.vendasPorDia.length" class="chart-message">
+                  Sem faturamento registrado no período.
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-header">
+              <div>
+                <h2 style="font-family:var(--font-display);font-size:1.125rem;color:var(--text-primary)">
+                  Pratos Mais Vendidos
+                </h2>
+                <p style="font-size:var(--text-xs);color:var(--text-tertiary);margin-top:.125rem">
+                  Top 5 no período selecionado
+                </p>
+              </div>
+            </div>
+            <div class="card-body" style="padding-top:0">
+              <div class="chart-container">
+                <canvas #dishesChart aria-label="Gráfico dos pratos mais vendidos"></canvas>
+                <div *ngIf="!loading && !topPratos.length" class="chart-message">
+                  Ainda não há pratos vendidos para exibir.
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <section class="card stock-alerts" *ngIf="dados.estoqueCritico.length">
           <div class="card-header">
             <div>
-              <h3 style="font-family:var(--font-display);font-size:1.125rem;color:var(--text-primary)">Faturamento por Hora</h3>
-              <p style="font-size:var(--text-xs);color:var(--text-tertiary);margin-top:.125rem">Pedidos de hoje · atualização em tempo real</p>
-            </div>
-            <div style="font-family:var(--font-mono);font-size:var(--text-lg);font-weight:700;color:var(--brand-400)">
-              {{ todayRevenue | currency:'BRL':'symbol':'1.0-0' }}
-            </div>
-          </div>
-          <div class="card-body" style="padding-top:0">
-            <div style="position:relative;height:220px">
-              <canvas #revenueChart></canvas>
-              <div *ngIf="orders.length === 0" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
-                <p style="color:var(--text-tertiary);font-size:var(--text-sm)">Aguardando pedidos para gerar o gráfico</p>
-              </div>
+              <h2 style="font-family:var(--font-display);font-size:1.125rem;color:var(--text-primary)">
+                Alertas de Estoque ({{ dados.alertasEstoque }})
+              </h2>
+              <p style="font-size:var(--text-xs);color:var(--text-tertiary);margin-top:.125rem">
+                Ingredientes no mínimo ou abaixo do saldo mínimo
+              </p>
             </div>
           </div>
+          <ul class="stock-alert-list">
+            <li *ngFor="let item of dados.estoqueCritico">
+              <span>{{ item.nome }}</span>
+              <strong>{{ item.saldo | number:'1.0-3' }} / {{ item.estoqueMinimo | number:'1.0-3' }} {{ item.unidadeMedida }}</strong>
+            </li>
+          </ul>
+        </section>
+        <div *ngIf="!dados.alertasEstoque" class="stock-ok" role="status">
+          Estoque sem alertas no momento.
         </div>
+      </ng-container>
 
-        <!-- Status donut -->
-        <div class="card">
-          <div class="card-header">
-            <h3 style="font-family:var(--font-display);font-size:1.125rem;color:var(--text-primary)">Status Atual</h3>
-          </div>
-          <div class="card-body" style="padding-top:0">
-            <div style="position:relative;height:180px;margin-bottom:1rem">
-              <canvas #statusChart></canvas>
-              <div *ngIf="orders.length === 0" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
-                <p style="color:var(--text-tertiary);font-size:var(--text-xs);text-align:center">Sem dados</p>
-              </div>
-            </div>
-            <!-- Legend -->
-            <div style="display:flex;flex-direction:column;gap:.5rem">
-              <div *ngFor="let s of statusDist" style="display:flex;align-items:center;justify-content:space-between;font-size:var(--text-xs)">
-                <div style="display:flex;align-items:center;gap:.5rem">
-                  <div style="width:8px;height:8px;border-radius:50%;flex-shrink:0" [style.background]="s.color"></div>
-                  <span style="color:var(--text-secondary)">{{ s.label }}</span>
-                </div>
-                <span style="font-weight:600;color:var(--text-primary)">{{ s.count }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
+      <div *ngIf="loading" class="card" role="status" style="padding:1.25rem;color:var(--text-secondary)">
+        Carregando insights...
       </div>
-
-      <!-- Charts row 2: Top Items Bar + Payment Methods -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem" class="chart-grid-sec">
-
-        <!-- Top items horizontal bar -->
-        <div class="card">
-          <div class="card-header">
-            <div>
-              <h3 style="font-family:var(--font-display);font-size:1.125rem;color:var(--text-primary)">Pratos Mais Pedidos</h3>
-              <p style="font-size:var(--text-xs);color:var(--text-tertiary);margin-top:.125rem">Top 5 por quantidade</p>
-            </div>
-          </div>
-          <div class="card-body" style="padding-top:0">
-            <div style="position:relative;height:220px">
-              <canvas #itemsChart></canvas>
-              <div *ngIf="topItems.length === 0" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
-                <p style="color:var(--text-tertiary);font-size:var(--text-sm)">Sem dados ainda</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Payment methods donut + list -->
-        <div class="card">
-          <div class="card-header">
-            <h3 style="font-family:var(--font-display);font-size:1.125rem;color:var(--text-primary)">Formas de Pagamento</h3>
-          </div>
-          <div class="card-body" style="padding-top:0">
-            <div style="position:relative;height:180px;margin-bottom:1rem">
-              <canvas #paymentChart></canvas>
-              <div *ngIf="paymentDist.length === 0" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
-                <p style="color:var(--text-tertiary);font-size:var(--text-xs);text-align:center">Sem dados</p>
-              </div>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:.625rem">
-              <div *ngFor="let p of paymentDist"
-                   style="display:flex;align-items:center;justify-content:space-between;padding:.5rem .75rem;background:var(--bg-elevated);border-radius:var(--r-lg)">
-                <div style="display:flex;align-items:center;gap:.625rem">
-                  <span style="font-size:1rem">{{ p.icon }}</span>
-                  <span style="font-size:var(--text-sm);font-weight:500;color:var(--text-secondary)">{{ p.method }}</span>
-                </div>
-                <div style="display:flex;align-items:center;gap:.75rem">
-                  <span style="font-size:var(--text-xs);color:var(--text-tertiary)">{{ p.count }} pedidos</span>
-                  <span style="font-size:var(--text-xs);font-weight:700;color:var(--text-primary);background:var(--bg-card);padding:.1rem .4rem;border-radius:var(--r-sm)">{{ p.pct }}%</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
     </div>
   `,
   styles: [`
-    @media (max-width: 1024px) {
-      .chart-grid-main { grid-template-columns: 1fr !important; }
-      .chart-grid-sec  { grid-template-columns: 1fr !important; }
+    .insights-heading { display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;margin-bottom:2rem; }
+    .period-filter { display:flex;align-items:center;gap:.625rem;color:var(--text-secondary);font-size:var(--text-sm);white-space:nowrap; }
+    .period-filter select { padding:.55rem .75rem;border-radius:.5rem;border:1px solid var(--border);background:var(--surface-1);color:var(--text-primary); }
+    .insights-kpis { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem; }
+    .insights-grid { display:grid;grid-template-columns:1.4fr 1fr;gap:1.5rem; }
+    .chart-container { position:relative;height:270px; }
+    .stock-alerts { margin-top:1.5rem; }
+    .stock-alert-list { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem 1.5rem;list-style:none;padding:0 1.25rem 1.25rem;margin:0; }
+    .stock-alert-list li { display:flex;justify-content:space-between;gap:1rem;color:var(--text-secondary);font-size:var(--text-sm); }
+    .stock-alert-list strong { color:var(--danger-text);white-space:nowrap; }
+    .stock-ok { margin-top:1.5rem;color:var(--text-tertiary);font-size:var(--text-sm); }
+    .chart-message {
+      position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+      color:var(--text-tertiary);font-size:var(--text-sm);pointer-events:none;
+    }
+    @media (max-width: 900px) {
+      .insights-grid { grid-template-columns:1fr; }
+      .insights-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    }
+    @media (max-width: 560px) {
+      .insights-heading { align-items:flex-start;flex-direction:column; }
+      .insights-kpis { grid-template-columns:1fr; }
+      .stock-alert-list { grid-template-columns:1fr; }
     }
   `]
 })
 export class InsightsDashboardComponent implements OnInit, AfterViewInit, OnDestroy {
-  @ViewChild('revenueChart')  revenueChartRef!:  ElementRef<HTMLCanvasElement>;
-  @ViewChild('statusChart')   statusChartRef!:   ElementRef<HTMLCanvasElement>;
-  @ViewChild('itemsChart')    itemsChartRef!:    ElementRef<HTMLCanvasElement>;
-  @ViewChild('paymentChart')  paymentChartRef!:  ElementRef<HTMLCanvasElement>;
+  @ViewChild('revenueChart') revenueCanvas!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('dishesChart') dishesCanvas!: ElementRef<HTMLCanvasElement>;
 
-  orders: Order[] = [];
-  private sub?: Subscription;
+  resumo: DashboardResumo | null = null;
+  topPratos: TopPrato[] = [];
+  loading = true;
+  errorMessage = '';
+  periodoDias = 7;
+
+  private subscription?: Subscription;
   private charts: Chart[] = [];
   private viewReady = false;
 
-  constructor(private ordersService: OrdersService, private ngZone: NgZone) {}
+  constructor(private insightsService: InsightsService, private ngZone: NgZone) {}
 
-  ngOnInit() {
-    this.sub = this.ordersService.orders.subscribe({
-      next: orders => {
-        this.orders = orders;
-        if (this.viewReady) this.ngZone.runOutsideAngular(() => this.updateAllCharts());
-      },
-      error: err => console.error('[Insights] orders error:', err),
-    });
+  ngOnInit(): void {
+    this.carregarDados();
   }
 
-  ngAfterViewInit() {
+  ngAfterViewInit(): void {
     this.viewReady = true;
-    // setTimeout 0 evita bloquear o primeiro render; runOutsideAngular evita que
-    // os ResizeObservers do Chart.js disparem change detection continuamente.
     this.ngZone.runOutsideAngular(() => {
-      setTimeout(() => {
-        this.buildAllCharts();
-        if (this.orders.length) this.updateAllCharts();
-      }, 0);
+      this.createCharts();
+      this.updateCharts();
     });
   }
 
-  ngOnDestroy() {
-    this.sub?.unsubscribe();
-    this.ngZone.runOutsideAngular(() => this.charts.forEach(c => c.destroy()));
+  ngOnDestroy(): void {
+    this.subscription?.unsubscribe();
+    this.ngZone.runOutsideAngular(() => this.charts.forEach(chart => chart.destroy()));
   }
 
-  // ── Computed data ──────────────────────────────────────────────
-
-  get revenue()        { return this.orders.reduce((s, o) => s + o.total, 0); }
-  get deliveredCount() { return this.orders.filter(o => o.status === 'delivered').length; }
-  get completionRate() { return this.orders.length ? Math.round(this.deliveredCount / this.orders.length * 100) : 0; }
-  get avgTicket()      { return this.orders.length ? this.revenue / this.orders.length : 0; }
-  get todayRevenue() {
-    const today = new Date().toDateString();
-    return this.orders.filter(o => new Date(o.createdAt).toDateString() === today).reduce((s, o) => s + o.total, 0);
+  alterarPeriodo(event: Event): void {
+    const dias = Number((event.target as HTMLSelectElement).value);
+    if (![7, 30, 90].includes(dias)) return;
+    this.periodoDias = dias;
+    this.carregarDados();
   }
 
-  get statusDist() {
-    const total = this.orders.length || 1;
-    return [
-      { label: 'Aguardando',  key: 'pending',    color: CHART_COLORS.gray   },
-      { label: 'Em Preparo',  key: 'preparing',  color: CHART_COLORS.amber  },
-      { label: 'Pronto',      key: 'ready',      color: CHART_COLORS.blue   },
-      { label: 'Em Entrega',  key: 'delivering', color: CHART_COLORS.green  },
-      { label: 'Entregue',    key: 'delivered',  color: CHART_COLORS.purple },
-      { label: 'Cancelado',   key: 'cancelled',  color: CHART_COLORS.red    },
-    ]
-      .map(s => ({
-        ...s,
-        count: this.orders.filter(o => o.status === s.key).length,
-        pct:   Math.round(this.orders.filter(o => o.status === s.key).length / total * 100),
-      }))
-      .filter(s => s.count > 0);
-  }
+  private carregarDados(): void {
+    this.subscription?.unsubscribe();
+    this.loading = true;
+    this.errorMessage = '';
 
-  get topItems(): { name: string; qty: number; revenue: number }[] {
-    const map = new Map<string, { qty: number; revenue: number }>();
-    for (const order of this.orders) {
-      for (const item of order.items) {
-        const prev = map.get(item.name) ?? { qty: 0, revenue: 0 };
-        map.set(item.name, { qty: prev.qty + item.quantity, revenue: prev.revenue + item.price * item.quantity });
-      }
-    }
-    return [...map.entries()].map(([name, v]) => ({ name, ...v })).sort((a, b) => b.qty - a.qty).slice(0, 5);
-  }
+    const fim = new Date();
+    const inicio = new Date(fim);
+    inicio.setDate(inicio.getDate() - this.periodoDias + 1);
+    const dataInicio = this.formatApiDate(inicio);
+    const dataFim = this.formatApiDate(fim);
 
-  get paymentDist() {
-    const icons: Record<string, string> = { PIX: '⚡', pix: '⚡', credit: '💳', debit: '🏧', cash: '💵', Crédito: '💳', Débito: '🏧', Dinheiro: '💵' };
-    const labels: Record<string, string> = { pix: 'PIX', credit: 'Crédito', debit: 'Débito', cash: 'Dinheiro' };
-    const total = this.orders.length || 1;
-    const counts = new Map<string, number>();
-    for (const o of this.orders) counts.set(o.paymentMethod, (counts.get(o.paymentMethod) ?? 0) + 1);
-    return [...counts.entries()]
-      .map(([key, count]) => ({ method: labels[key] ?? key, icon: icons[key] ?? '💳', count, pct: Math.round(count / total * 100) }))
-      .sort((a, b) => b.count - a.count);
-  }
-
-  private revenueByHour(): { labels: string[]; values: number[] } {
-    const map = new Map<number, number>();
-    const today = new Date().toDateString();
-    for (const o of this.orders) {
-      if (new Date(o.createdAt).toDateString() !== today) continue;
-      const h = new Date(o.createdAt).getHours();
-      map.set(h, (map.get(h) ?? 0) + o.total);
-    }
-    const now = new Date().getHours();
-    const labels: string[] = [];
-    const values: number[] = [];
-    for (let h = Math.max(0, now - 11); h <= now; h++) {
-      labels.push(`${String(h).padStart(2, '0')}:00`);
-      values.push(map.get(h) ?? 0);
-    }
-    return { labels, values };
-  }
-
-  // ── Chart lifecycle ────────────────────────────────────────────
-
-  private baseOptions(extra: object = {}): object {
-    return {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: {} } },
-      ...extra,
-    };
-  }
-
-  private buildAllCharts() {
-    // Revenue line
-    const revChart = new Chart(this.revenueChartRef.nativeElement, {
-      type: 'line',
-      data: { labels: [], datasets: [{ data: [], borderColor: CHART_COLORS.amber, backgroundColor: CHART_COLORS.amberBg, borderWidth: 2, fill: true, tension: .4, pointRadius: 4, pointBackgroundColor: CHART_COLORS.amber }] },
-      options: {
-        ...(this.baseOptions() as any),
-        scales: {
-          x: { grid: { color: CHART_COLORS.grid }, ticks: { color: CHART_COLORS.text, font: { size: 11 } } },
-          y: { grid: { color: CHART_COLORS.grid }, ticks: { color: CHART_COLORS.text, font: { size: 11 }, callback: (v: any) => `R$${v}` } },
-        },
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx: any) => ` R$ ${ctx.parsed.y.toFixed(2)}` } } },
-      } as any,
-    });
-
-    // Status donut
-    const stChart = new Chart(this.statusChartRef.nativeElement, {
-      type: 'doughnut',
-      data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderWidth: 0, hoverOffset: 4 }] },
-      options: { ...(this.baseOptions() as any), cutout: '68%', plugins: { legend: { display: false } } } as any,
-    });
-
-    // Items bar
-    const itChart = new Chart(this.itemsChartRef.nativeElement, {
-      type: 'bar',
-      data: { labels: [], datasets: [{ data: [], backgroundColor: CHART_COLORS.amberBg, borderColor: CHART_COLORS.amber, borderWidth: 1.5, borderRadius: 6 }] },
-      options: {
-        ...(this.baseOptions() as any),
-        indexAxis: 'y' as const,
-        scales: {
-          x: { grid: { color: CHART_COLORS.grid }, ticks: { color: CHART_COLORS.text, font: { size: 11 } } },
-          y: { grid: { display: false }, ticks: { color: CHART_COLORS.text, font: { size: 11 } } },
-        },
-        plugins: { legend: { display: false } },
-      } as any,
-    });
-
-    // Payment donut
-    const payChart = new Chart(this.paymentChartRef.nativeElement, {
-      type: 'doughnut',
-      data: {
-        labels: [],
-        datasets: [{
-          data: [],
-          backgroundColor: [CHART_COLORS.greenBg, CHART_COLORS.blueBg, CHART_COLORS.amberBg, CHART_COLORS.purpleBg],
-          borderColor:     [CHART_COLORS.green,   CHART_COLORS.blue,   CHART_COLORS.amber,   CHART_COLORS.purple],
-          borderWidth: 1.5,
-          hoverOffset: 4,
-        }],
+    this.subscription = forkJoin({
+      resumo: this.insightsService.obterDashboardResumo(dataInicio, dataFim),
+      topPratos: this.insightsService.obterTopPratos(dataInicio, dataFim)
+    }).subscribe({
+      next: ({ resumo, topPratos }) => {
+        this.resumo = resumo;
+        this.topPratos = topPratos;
+        this.loading = false;
+        if (this.viewReady) this.ngZone.runOutsideAngular(() => this.updateCharts());
       },
-      options: { ...(this.baseOptions() as any), cutout: '65%', plugins: { legend: { display: false } } } as any,
+      error: error => {
+        console.error('[Insights] Falha ao carregar dados do dashboard:', error);
+        this.loading = false;
+        this.errorMessage = 'Não foi possível carregar os insights. Verifique a conexão com a API e tente novamente.';
+      }
     });
-
-    this.charts = [revChart, stChart, itChart, payChart];
   }
 
-  private updateAllCharts() {
-    if (!this.charts.length) return;
+  private createCharts(): void {
+    this.charts = [
+      new Chart<'line', number[], string>(this.revenueCanvas.nativeElement, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            data: [],
+            borderColor: AMBER,
+            backgroundColor: AMBER_BACKGROUND,
+            borderWidth: 2,
+            fill: true,
+            tension: .35,
+            pointRadius: 3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { color: CHART_GRID }, ticks: { color: CHART_TEXT } },
+            y: {
+              beginAtZero: true,
+              grid: { color: CHART_GRID },
+              ticks: { color: CHART_TEXT, callback: value => `R$ ${value}` }
+            }
+          }
+        }
+      }),
+      new Chart<'bar', number[], string>(this.dishesCanvas.nativeElement, {
+        type: 'bar',
+        data: {
+          labels: [],
+          datasets: [{
+            data: [],
+            backgroundColor: AMBER_BACKGROUND,
+            borderColor: AMBER,
+            borderWidth: 1.5,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { beginAtZero: true, grid: { color: CHART_GRID }, ticks: { color: CHART_TEXT, precision: 0 } },
+            y: { grid: { display: false }, ticks: { color: CHART_TEXT } }
+          }
+        }
+      })
+    ];
+  }
 
-    const [revChart, stChart, itChart, payChart] = this.charts;
+  private updateCharts(): void {
+    if (!this.resumo || this.charts.length !== 2) return;
 
-    // Revenue line
-    const { labels, values } = this.revenueByHour();
-    revChart.data.labels = labels;
-    revChart.data.datasets[0].data = values;
-    revChart.update('none');
+    const [revenueChart, dishesChart] = this.charts;
+    const dailyRevenue = this.resumo.vendasPorDia;
+    revenueChart.data.labels = dailyRevenue.map(item => this.formatDate(item.data));
+    revenueChart.data.datasets[0].data = dailyRevenue.map(item => item.faturamento);
+    revenueChart.update('none');
 
-    // Status donut
-    const sd = this.statusDist;
-    stChart.data.labels = sd.map(s => s.label);
-    stChart.data.datasets[0].data = sd.map(s => s.count);
-    (stChart.data.datasets[0] as any).backgroundColor = sd.map(s => s.color.replace('1)', '.3)'));
-    (stChart.data.datasets[0] as any).borderColor = sd.map(s => s.color);
-    (stChart.data.datasets[0] as any).borderWidth = 1.5;
-    stChart.update('none');
+    dishesChart.data.labels = this.topPratos.map(item => item.nomeProduto);
+    dishesChart.data.datasets[0].data = this.topPratos.map(item => item.quantidadeTotal);
+    dishesChart.update('none');
+  }
 
-    // Items bar
-    const ti = this.topItems;
-    itChart.data.labels = ti.map(i => i.name.length > 22 ? i.name.slice(0, 22) + '…' : i.name);
-    itChart.data.datasets[0].data = ti.map(i => i.qty);
-    itChart.update('none');
+  private formatApiDate(value: Date): string {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
 
-    // Payment donut
-    const pd = this.paymentDist;
-    payChart.data.labels = pd.map(p => p.method);
-    payChart.data.datasets[0].data = pd.map(p => p.count);
-    payChart.update('none');
+  private formatDate(value: string): string {
+    const [year, month, day] = value.split('-');
+    return year && month && day ? `${day}/${month}` : value;
   }
 }

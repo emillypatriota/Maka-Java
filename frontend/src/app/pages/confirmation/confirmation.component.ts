@@ -44,7 +44,7 @@ import { Order } from '../../models';
               <p>👤 {{ order.customer.name }}</p>
               <p>📱 {{ order.customer.phone }}</p>
               <p>📍 {{ order.customer.address }}</p>
-              <p>💳 {{ order.paymentMethod }}</p>
+              <p>💳 {{ payLabel(order.paymentMethod) }}</p>
             </div>
             <div style="margin-top:1.25rem;background:#fef3c7;border-radius:var(--r-lg);padding:1rem;display:flex;align-items:center;gap:.75rem">
               <span style="font-size:1.5rem">⏱️</span>
@@ -69,6 +69,11 @@ import { Order } from '../../models';
 export class ConfirmationComponent implements OnInit {
   order: Order | null = null;
   constructor(private router: Router) {}
+  payLabel(m: string): string {
+    const labels: Record<string, string> = { pix: 'PIX', credit: 'Cartão de Crédito', debit: 'Cartão de Débito', cash: 'Dinheiro' };
+    return labels[m] ?? m;
+  }
+
   ngOnInit() {
     this.order = history.state?.order ?? null;
     if (!this.order) this.router.navigate(['/']);
