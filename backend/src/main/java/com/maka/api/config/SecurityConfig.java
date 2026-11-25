@@ -85,7 +85,9 @@ public class SecurityConfig {
 
                         // ── Painéis da cozinha e do entregador ──────────────────────
                         .requestMatchers(HttpMethod.PATCH, "/api/pedidos/*/entregador").hasAnyRole(ENTREGA)
+                        // Cancelar: o cliente cancela o próprio pedido (o Service confere o dono)
                         .requestMatchers(HttpMethod.PATCH, "/api/admin/pedidos/*/cancelar").hasAnyRole("ADMIN", "MANAGER", "CLIENTE")
+                        .requestMatchers("/api/pedidos", "/api/pedidos/**", "/api/admin/pedidos", "/api/admin/pedidos/**")
                                 .hasAnyRole(PAINEL_PEDIDOS)
 
                         // ── Gerência ────────────────────────────────────────────────
