@@ -114,7 +114,9 @@ public class PedidoService {
             throw new ConflitoException("Transição de status inválida: de " + pedido.getStatus() + " para " + novoStatus);
         }
 
-        if (novoStatus == StatusPedido.confirmed && pedido.getStatus() == StatusPedido.pending) {
+        // A baixa de estoque acontece uma única vez, ao sair de pending (confirmando ou iniciando o preparo)
+        if (pedido.getStatus() == StatusPedido.pending
+                && (novoStatus == StatusPedido.confirmed || novoStatus == StatusPedido.preparing)) {
             processarBaixaDeEstoque(pedido);
         }
 
@@ -306,7 +308,8 @@ public class PedidoService {
                    atual == StatusPedido.preparing || atual == StatusPedido.ready;
         }
         return switch (atual) {
-            case pending -> novo == StatusPedido.confirmed;
+            // pending -> preparing é o atalho "confirmar e iniciar preparo" das telas da cozinha e da gestão
+            case pending -> novo == StatusPedido.confirmed || novo == StatusPedido.preparing;
             case confirmed -> novo == StatusPedido.preparing;
             case preparing -> novo == StatusPedido.ready;
             case ready -> novo == StatusPedido.delivering;
